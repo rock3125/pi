@@ -62,6 +62,19 @@ export const Broom = ({ size = 12, className }: Props) => (
   </svg>
 )
 
+export const Sun = ({ size = 12, className }: Props) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="8" cy="8" r="3" />
+    <path d="M8 1.5v1.4M8 13.1v1.4M1.5 8h1.4M13.1 8h1.4M3.4 3.4l1 1M11.6 11.6l1 1M12.6 3.4l-1 1M4.4 11.6l-1 1" />
+  </svg>
+)
+
+export const Moon = ({ size = 12, className }: Props) => (
+  <svg {...base(size)} className={className}>
+    <path d="M13 9.6A5.5 5.5 0 0 1 6.4 3a5.5 5.5 0 1 0 6.6 6.6Z" />
+  </svg>
+)
+
 export const Wave = ({ size = 12, className }: Props) => (
   <svg {...base(size)} className={className}>
     <path d="M1.5 8h2.25L5.5 3.5 8 12.5l2-6.5 1.25 2h3.25" />

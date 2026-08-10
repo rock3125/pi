@@ -34,6 +34,9 @@ Then open <http://127.0.0.1:7070>. That brings up two containers — pi built fr
 source and serving on 7071, and piview serving the web view on 7070 with the MCP
 endpoint at `/mcp`. Both ports are published to loopback only.
 
+The view opens light. The button beside *clear database* switches it to the dark
+phosphor ground, and the browser remembers which one you chose.
+
 ### On a server
 
 Build an installer, copy it over, run it. It installs the stack under systemd,

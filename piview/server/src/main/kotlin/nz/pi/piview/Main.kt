@@ -29,6 +29,9 @@ Options:
   --bind <addr>       interface for the web view         (default 127.0.0.1)
   --ui-dir <path>     serve the ui from this directory instead of the jar
   --samples <path>    directory of .pl files to offer in the ui
+  --allow-origin <url>  a browser origin to accept, e.g. https://pi.example.com
+                        (repeatable; needed when a reverse proxy serves the ui
+                        from a name this process never sees)
   --stdio             also speak MCP on stdin/stdout (for Claude Code and friends)
   --no-web            do not start the web view; MCP on stdio only
   --timeout <ms>      how long to wait for an answer      (default 60000)
@@ -56,6 +59,7 @@ private class Options(args: Array<String>) {
     var stdio = false
     var web = true
     var timeoutMillis = 60_000
+    val extraOrigins = mutableListOf<String>()
 
     init {
         var i = 0
@@ -72,6 +76,9 @@ private class Options(args: Array<String>) {
                 "--bind" -> bind = next()
                 "--ui-dir" -> uiDir = File(next())
                 "--samples" -> sampleDir = File(next())
+                "--allow-origin" -> extraOrigins += next().trimEnd('/').also {
+                    if (!it.contains("://")) die("--allow-origin needs a scheme, as in https://$it")
+                }
                 "--timeout" -> timeoutMillis = next().toIntOrNull() ?: die("--timeout needs a number")
                 "--stdio" -> stdio = true
                 "--no-web" -> web = false
@@ -141,7 +148,12 @@ fun main(args: Array<String>): Unit = runBlocking {
                 bind = options.bind,
                 uiDir = options.uiDir,
                 sampleDir = options.sampleDir,
-                devOrigins = listOf("http://localhost:5173", "http://127.0.0.1:5173"),
+                // the vite dev server, plus anything --allow-origin named: a
+                // proxy in front of us serves the ui from a name this process
+                // never sees, and both the CORS check and the MCP transport's
+                // host check have to know it
+                allowedOrigins = listOf("http://localhost:5173", "http://127.0.0.1:5173") +
+                    options.extraOrigins,
             ),
         ).start()
     }

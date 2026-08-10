@@ -3,10 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="description" content="A live view of a running PI prolog interpreter." />
     <title>piview — PI prolog</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0f0d'/%3E%3Ctext x='16' y='23' font-family='serif' font-size='20' font-weight='700' fill='%2364f0a8' text-anchor='middle'%3E%CF%80%3C/text%3E%3C/svg%3E" />
+    <script>
+      // Light is the default; a stored dark choice has to land before the first
+      // paint or the tube arrives a frame late, as a flash of paper.  Kept
+      // inline and tiny for that reason - the app reads the same key.
+      try {
+        if (localStorage.getItem('piview:theme') === 'dark')
+          document.documentElement.dataset.theme = 'dark'
+      } catch (error) {
+        /* private mode, or storage refused: the default stands */
+      }
+    </script>
   </head>
   <body>
     <!--
@@ -14,9 +25,11 @@
       dashboard about one. It refuses the card-grid admin panel: the console is a
       spine down the middle, flanked by the two things a spine cannot show - what
       the database holds, and who last touched it.
-      OWN-WORLD: near-black ink ground (#080b0a) under a faint scanline; phosphor
-      green for bindings and life, amber for `no`, signal red for parse errors,
-      violet for anything an agent did. JetBrains Mono carries every piece of
+      OWN-WORLD: a green-cast ground under a faint scanline - paper (#f6f9f6) by
+      default, the near-black tube (#070a09) one click away and remembered;
+      phosphor green for bindings and life, amber for `no`, signal red for parse
+      errors, violet for anything an agent did, each taken to ink strength on
+      paper and tube strength on black. JetBrains Mono carries every piece of
       prolog; Archivo in tracked small caps carries the chrome. Rules, not cards:
       hairline dividers and gutter marks separate regions.
       STORY: you see pi is alive and what it holds, you type a goal, solutions

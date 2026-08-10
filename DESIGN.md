@@ -6,37 +6,46 @@ the top of `piview/ui/index.html`.
 
 ## Mode and scene
 
-**Operate.** Someone with pi already running in another pane, usually in a dark
-room, who needs to see what the database holds, what a goal returned, and what an
-agent just did to it. They know prolog. Expression never gets in front of the
-task.
+**Operate.** Someone with pi already running in another pane, who needs to see
+what the database holds, what a goal returned, and what an agent just did to it.
+They know prolog. Expression never gets in front of the task.
 
-Dark is not a category default here: the surface sits beside a terminal, on the
-same screen, at the same time.
+Two grounds, because that pane is not always in a dark room. **Paper is the
+default** — the surface is read in a lit office, on a projector and beside
+someone else's screen more often than at 2am — and the tube is one click away in
+the top rail. The choice is remembered in `localStorage` under `piview:theme` and
+applied by an inline script in `index.html` before the first paint, so a stored
+dark choice never arrives a frame late as a flash of white.
+
+`prefers-color-scheme` is deliberately not consulted. It says what the machine is
+set to, not whether *this* window is the one sitting next to a terminal at night;
+the toggle is the answer to that question and it sticks.
 
 ## The world
 
-A phosphor instrument clamped onto a running interpreter. Near-black ground under
-a faint scanline field and a corner falloff, both far enough down to read as
-material rather than as an effect. Regions are separated by hairline rules and a
-gutter mark, never by cards — the one arrangement this surface refuses is the
+A phosphor instrument clamped onto a running interpreter. A green-cast ground
+under a faint scanline field and a corner falloff, both far enough down to read
+as material rather than as an effect. Regions are separated by hairline rules and
+a gutter mark, never by cards — the one arrangement this surface refuses is the
 card-grid admin panel.
 
 ### Colour
 
-Restrained: a near-black ground, four signals, nothing else.
+Restrained: one ground, four signals, nothing else. Every colour is a token, and
+the two palettes are the only thing the ground swaps — the four signals mean the
+same on both, at ink strength on paper and tube strength on black.
 
-| Token | Value | Carries |
-| --- | --- | --- |
-| `--ink-1` | `#070a09` | the ground |
-| `--ink-2` `--ink-3` `--ink-4` | `#0b100e` `#101613` `#16201b` | raised surfaces, in that order |
-| `--rule-faint` `--rule` `--rule-strong` | `#1a2521` `#24322c` `#35473f` | dividers, borders, marks |
-| `--text` `--text-2` `--text-3` | `#dbe6df` `#93a89c` `#64796e` | body, secondary, faint |
-| `--phosphor` | `#64f0a8` | success, bindings, life |
-| `--amber` | `#f2b53c` | `no` — a goal that ran and failed |
-| `--alarm` | `#ff6f5f` | a goal that never ran: parse errors, faults |
-| `--agent` | `#b291ff` | anything an agent did, and the `:-` neck |
-| `--var` | `#63cdf2` | variables, and the web as a source |
+| Token | Paper (default) | Tube | Carries |
+| --- | --- | --- | --- |
+| `--ink-1` | `#f6f9f6` | `#070a09` | the ground |
+| `--ink-2` `--ink-3` `--ink-4` | `#eef2ee` `#e5ebe6` `#dae2db` | `#0b100e` `#101613` `#16201b` | raised surfaces, in that order |
+| `--rule-faint` `--rule` `--rule-strong` | `#e2e9e3` `#cbd6cd` `#a3b3a6` | `#1a2521` `#24322c` `#35473f` | dividers, borders, marks |
+| `--text` `--text-2` `--text-3` | `#101a15` `#3d5347` `#55695e` | `#dbe6df` `#93a89c` `#64796e` | body, secondary, faint |
+| `--phosphor` | `#0e7a4a` | `#64f0a8` | success, bindings, life |
+| `--amber` | `#8a5a00` | `#f2b53c` | `no` — a goal that ran and failed |
+| `--alarm` | `#c0261a` | `#ff6f5f` | a goal that never ran: parse errors, faults |
+| `--agent` | `#6b3fd1` | `#b291ff` | anything an agent did, and the `:-` neck |
+| `--var` | `#0d6b91` | `#63cdf2` | variables, and the web as a source |
 
 The three outcomes are a colour each and never share one. Green means the
 interpreter answered, amber means it answered `no`, red means it did not get
@@ -44,7 +53,16 @@ that far — the distinction prolog itself makes, which a single "error" colour
 would flatten.
 
 Each signal appears at three strengths: full for text, `color-mix` at ~9% for a
-fill, ~22% for a border. The `-dim` tokens carry the gutter marks.
+fill, ~22% for a border. The `-dim` tokens carry the gutter marks. On paper every
+signal is taken down until it clears 4.5:1 on the ground; the mixed fills and
+borders come out as tints of the same hue, so the three outcomes stay as far
+apart there as they are on black.
+
+The tube's own artefacts are tokens too. `--scan` and `--falloff` stay on paper
+as texture; the three `--glow-*` shadows — the brand `π`, the selected tab's
+mark, the solve button's hover — are `none` there. Light behind glass is the one
+part of the instrument a lit room cannot borrow, and a green smudge under dark
+green ink is what faking it looks like.
 
 ### Type
 
@@ -71,8 +89,10 @@ hairline separation.
 Three columns under one status rail.
 
 - **Top rail** — gauges, not a header: interpreter address with a pulsing life
-  dot, state, clause and predicate counts, the MCP endpoint. The one action here
-  is destructive and sits at the far right, alone.
+  dot, state, clause and predicate counts, the MCP endpoint. Two buttons at the
+  far right: the ground toggle, icon only and unlabelled because it is chrome
+  rather than an action on the database, then the one destructive action, last
+  and with a gap before it.
 - **Left rail, the database** — predicates grouped and collapsible, each with a
   fact tally and a rule tally in different colours; clauses numbered as pi
   numbers them, clicking one prefills a query, hovering reveals its delete.

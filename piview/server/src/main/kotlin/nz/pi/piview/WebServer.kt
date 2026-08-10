@@ -48,7 +48,7 @@ class WebServer(
         val bind: String,
         val uiDir: File?,
         val sampleDir: File?,
-        val devOrigins: List<String>,
+        val allowedOrigins: List<String>,
     )
 
     private val log = LoggerFactory.getLogger(WebServer::class.java)
@@ -65,12 +65,21 @@ class WebServer(
         // own, configured with settings this API does not want (the class
         // discriminator is off, which would flatten ServerEvent).  Responses are
         // serialised explicitly with piview's Json instead.
+        // The transport refuses a Host header it does not recognise, which is
+        // its DNS-rebinding defence. A reverse proxy passes the browser's Host
+        // through verbatim, so every origin we accept has to be a host we
+        // accept as well — "https://pi.example.com" arrives as Host
+        // "pi.example.com". Deriving one list from the other keeps a caller
+        // from having to name the same place twice.
+        val originHosts = config.allowedOrigins.map { it.substringAfter("://") }
+
         mcpStreamableHttp(
             path = "/mcp",
             // the browser and pi are both local; the UI is served from this same
             // origin, and the vite dev server needs to be let in during development
-            allowedHosts = listOf("localhost", "127.0.0.1", "[::1]", "${config.bind}:${config.port}"),
-            allowedOrigins = config.devOrigins.ifEmpty { null },
+            allowedHosts = listOf("localhost", "127.0.0.1", "[::1]", "${config.bind}:${config.port}") +
+                originHosts,
+            allowedOrigins = config.allowedOrigins.ifEmpty { null },
         ) {
             McpTools.build(session)
         }
@@ -81,7 +90,7 @@ class WebServer(
         }
 
         install(CORS) {
-            config.devOrigins.forEach { origin ->
+            config.allowedOrigins.forEach { origin ->
                 val withoutScheme = origin.substringAfter("://")
                 allowHost(withoutScheme, schemes = listOf(origin.substringBefore("://")))
             }

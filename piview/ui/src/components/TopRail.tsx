@@ -1,14 +1,17 @@
 import type { ConnectionStatus, DatabaseSnapshot } from '../types'
-import { Broom } from './Icons'
+import type { Theme } from '../theme'
+import { Broom, Moon, Sun } from './Icons'
 
 interface Props {
   status: ConnectionStatus
   database: DatabaseSnapshot
   busy: boolean
+  theme: Theme
+  onToggleTheme: () => void
   onClear: () => void
 }
 
-export function TopRail({ status, database, busy, onClear }: Props) {
+export function TopRail({ status, database, busy, theme, onToggleTheme, onClear }: Props) {
   const live = status.connected
 
   return (
@@ -51,6 +54,18 @@ export function TopRail({ status, database, busy, onClear }: Props) {
       </div>
 
       <span className="top-rail__spacer" />
+
+      {/* chrome, not an action on the database: icon only, and it keeps its
+          distance from the one destructive button on this rail */}
+      <button
+        className="rail-button rail-button--icon"
+        onClick={onToggleTheme}
+        title={theme === 'dark' ? 'Draw on paper' : 'Draw on the tube'}
+        aria-label={theme === 'dark' ? 'Switch to the light ground' : 'Switch to the dark ground'}
+        aria-pressed={theme === 'dark'}
+      >
+        {theme === 'dark' ? <Sun /> : <Moon />}
+      </button>
 
       <button
         className="rail-button rail-button--alarm"

@@ -6,6 +6,7 @@ import { DatabasePanel } from './components/DatabasePanel'
 import { Alert, Wave } from './components/Icons'
 import { RelationGraph } from './components/RelationGraph'
 import { TopRail } from './components/TopRail'
+import { applyTheme, storedTheme, type Theme } from './theme'
 import type { Clause, SampleFile, TranscriptBody, TranscriptEntry } from './types'
 import { useSession } from './useSession'
 
@@ -20,6 +21,7 @@ export function App() {
   const [inspector, setInspector] = useState<Inspector>('relations')
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('console')
   const [busy, setBusy] = useState(false)
+  const [theme, setTheme] = useState<Theme>(storedTheme)
 
   const nextId = useRef(1)
   const seenActivity = useRef(0)
@@ -41,6 +43,10 @@ export function App() {
   useEffect(() => {
     api.samples().then(setSamples).catch(() => setSamples([]))
   }, [])
+
+  // the inline script in index.html has already applied a stored choice; this
+  // keeps <html> and the store in step with every toggle after that
+  useEffect(() => applyTheme(theme), [theme])
 
   // an agent's queries belong in the transcript too - the console is a view of
   // the interpreter, not a log of this browser tab
@@ -167,7 +173,14 @@ export function App() {
 
   return (
     <div className="shell" data-mobile-panel={mobilePanel}>
-      <TopRail status={status} database={database} busy={busy} onClear={clearDatabase} />
+      <TopRail
+        status={status}
+        database={database}
+        busy={busy}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+        onClear={clearDatabase}
+      />
 
       <nav className="mobile-switch" aria-label="Panels">
         {(['database', 'console', 'inspect'] as MobilePanel[]).map((panel) => (

@@ -35,6 +35,24 @@ services:
     depends_on:
       prolog:
         condition: service_healthy
+    # This repeats the image's CMD because compose replaces it rather than
+    # appending. The last pair is the only addition: nginx serves the ui from
+    # https://home.peter.nz/pi/, a name this process never sees, and both the
+    # CORS check and the MCP transport's host check refuse what they do not
+    # know. Without it the event socket and /pi/mcp 403.
+    command:
+      - "--host"
+      - "prolog"
+      - "--port"
+      - "7071"
+      - "--bind"
+      - "0.0.0.0"
+      - "--web-port"
+      - "7070"
+      - "--samples"
+      - "/app/samples"
+      - "--allow-origin"
+      - "https://home.peter.nz"
     ports:
       - "127.0.0.1:7070:7070"
     healthcheck:
