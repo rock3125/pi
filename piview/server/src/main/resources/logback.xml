@@ -1,0 +1,19 @@
+<configuration>
+    <!-- stderr, always.  in stdio mode stdout carries JSON-RPC frames and a
+         stray log line there would corrupt the MCP stream. -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{24} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- the SDK narrates every tool it registers; piview's own lines are the
+         ones worth reading -->
+    <logger name="nz.pi.piview" level="INFO"/>
+    <logger name="piview" level="INFO"/>
+
+    <root level="WARN">
+        <appender-ref ref="STDERR"/>
+    </root>
+</configuration>

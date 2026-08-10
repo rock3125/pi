@@ -1,0 +1,46 @@
+# PI plus piview, from a clean checkout:
+#
+#   docker compose up --build
+#
+# then open http://127.0.0.1:7070
+#
+# For an agent, point an MCP client at http://127.0.0.1:7070/mcp, or run the
+# stdio server against the published prolog port - see piview/README.md.
+
+services:
+  prolog:
+    build:
+      context: .
+      dockerfile: piview/docker/prolog.Dockerfile
+    # pi reads commands from stdin and exits on end-of-file; without these it
+    # would start, see no terminal, and stop
+    stdin_open: true
+    tty: true
+    ports:
+      # loopback only: the protocol has no authentication, and `load` reads
+      # any file the interpreter can
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  piview:
+    build:
+      context: .
+      dockerfile: piview/docker/piview.Dockerfile
+    depends_on:
+      prolog:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:7070:7070"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7070"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped

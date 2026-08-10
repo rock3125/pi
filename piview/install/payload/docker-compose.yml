@@ -1,0 +1,68 @@
+# piview, as installed on a server.
+#
+# Values come from /etc/piview/piview.env, which is symlinked to .env beside
+# this file so `docker compose` here and the systemd unit see the same
+# settings.
+
+name: ${COMPOSE_PROJECT_NAME:-piview}
+
+services:
+  prolog:
+    build:
+      context: .
+      dockerfile: piview/docker/prolog.Dockerfile
+    image: piview/prolog:${PIVIEW_VERSION:-latest}
+    command:
+      - prolog
+      - --port
+      - "8080"
+      - --bind
+      - "*"
+      - ${PI_PROGRAM:-/app/programs/family.pl}
+    # pi reads commands from stdin and exits on end-of-file
+    stdin_open: true
+    tty: true
+    volumes:
+      # the same path in both containers: the web view hands pi a path to
+      # `load`, and pi resolves it in its own container
+      - ${PIVIEW_PROGRAMS:-/var/lib/piview/programs}:/app/programs:ro
+    ports:
+      - "${PI_BIND:-127.0.0.1}:${PI_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  piview:
+    build:
+      context: .
+      dockerfile: piview/docker/piview.Dockerfile
+    image: piview/piview:${PIVIEW_VERSION:-latest}
+    depends_on:
+      prolog:
+        condition: service_healthy
+    command:
+      - --host
+      - prolog
+      - --port
+      - "8080"
+      - --bind
+      - 0.0.0.0
+      - --web-port
+      - "7070"
+      - --samples
+      - /app/programs
+    volumes:
+      - ${PIVIEW_PROGRAMS:-/var/lib/piview/programs}:/app/programs:ro
+    ports:
+      - "${PIVIEW_BIND:-127.0.0.1}:${PIVIEW_PORT:-7070}:7070"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7070"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped

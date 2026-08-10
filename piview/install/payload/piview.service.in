@@ -1,0 +1,24 @@
+[Unit]
+Description=piview - PI prolog interpreter with an MCP server and a web view
+Documentation=file://__PREFIX__/README.md
+Requires=__DOCKER_UNIT__
+After=__DOCKER_UNIT__ network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=__PREFIX__
+EnvironmentFile=__CONFIG__
+
+# compose does the supervising: the containers carry restart: unless-stopped,
+# so this unit only has to bring the stack up and take it down
+ExecStart=__DOCKER__ compose up -d --remove-orphans
+ExecStop=__DOCKER__ compose down
+ExecReload=__DOCKER__ compose up -d --force-recreate --remove-orphans
+
+# pulling and starting images can take a while on a cold host
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

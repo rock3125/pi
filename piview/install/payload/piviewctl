@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+#
+# piviewctl - manage an installed piview.
+#
+# The installer rewrites PREFIX and CONFIG below to match where it put things.
+
+set -euo pipefail
+
+PREFIX=/opt/piview
+CONFIG=/etc/piview/piview.env
+
+usage() {
+    cat <<EOF
+piviewctl - manage piview
+
+  piviewctl <command>
+
+Commands:
+  status         is it running, and what does the interpreter hold
+  start          start the service
+  stop           stop the service
+  restart        restart it, picking up $CONFIG
+  logs [-f]      container logs
+  ps             the containers
+  config         open $CONFIG in \$EDITOR, then restart
+  programs       list the programs directory
+  shell          a shell in the piview container
+  prolog         a prolog prompt on the running interpreter
+  version        what is installed
+  uninstall      remove piview (asks first)
+EOF
+}
+
+need_root() {
+    [ "$(id -u)" = "0" ] || exec sudo -- "$0" "$@"
+}
+
+compose() {
+    ( cd "$PREFIX" && docker compose "$@" )
+}
+
+load_config() {
+    # shellcheck disable=SC1090
+    [ -r "$CONFIG" ] && { set -a; . "$CONFIG"; set +a; }
+    PIVIEW_PORT=${PIVIEW_PORT:-7070}
+    PIVIEW_BIND=${PIVIEW_BIND:-127.0.0.1}
+    PIVIEW_PROGRAMS=${PIVIEW_PROGRAMS:-/var/lib/piview/programs}
+}
+
+cmd=${1:-status}
+[ $# -gt 0 ] && shift || true
+
+case "$cmd" in
+
+    status)
+        load_config
+        state=$(systemctl is-active piview.service 2>/dev/null || echo unknown)
+        printf 'service    %s\n' "$state"
+        printf 'version    %s\n' "$(cat "$PREFIX/VERSION" 2>/dev/null || echo unknown)"
+        printf 'web view   http://%s:%s\n' "$PIVIEW_BIND" "$PIVIEW_PORT"
+        printf 'programs   %s\n' "$PIVIEW_PROGRAMS"
+        printf '\n'
+        compose ps 2>/dev/null || true
+        printf '\n'
+        if answer=$(curl -fsS "http://127.0.0.1:${PIVIEW_PORT}/api/status" 2>/dev/null); then
+            printf 'interpreter %s\n' "$answer"
+        else
+            printf 'interpreter not answering on 127.0.0.1:%s\n' "$PIVIEW_PORT"
+        fi
+        ;;
+
+    start|stop|restart)
+        need_root "$cmd" "$@"
+        systemctl "$cmd" piview.service
+        systemctl --no-pager --lines=0 status piview.service || true
+        ;;
+
+    logs)
+        compose logs "$@"
+        ;;
+
+    ps)
+        compose ps
+        ;;
+
+    config)
+        need_root config "$@"
+        "${EDITOR:-vi}" "$CONFIG"
+        printf 'restarting to pick up the changes\n'
+        systemctl restart piview.service
+        ;;
+
+    programs)
+        load_config
+        printf '%s\n' "$PIVIEW_PROGRAMS"
+        ls -la "$PIVIEW_PROGRAMS"
+        ;;
+
+    shell)
+        compose exec piview /bin/bash
+        ;;
+
+    prolog)
+        load_config
+        printf 'connecting to the interpreter; type exit to leave\n'
+        # the container has netcat for its health check, so no host tools needed
+        compose exec prolog nc 127.0.0.1 8080
+        ;;
+
+    version)
+        cat "$PREFIX/VERSION" 2>/dev/null || echo unknown
+        ;;
+
+    uninstall)
+        need_root uninstall "$@"
+        exec "$PREFIX/uninstall.sh" "$@"
+        ;;
+
+    -h|--help|help)
+        usage
+        ;;
+
+    *)
+        printf 'piviewctl: unknown command: %s\n\n' "$cmd" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
