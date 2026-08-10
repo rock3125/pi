@@ -31,8 +31,8 @@
 // A plain text TCP front end for the interpreter, on ordinary POSIX
 // sockets.  Anything that can write to a socket can drive it:
 //
-//     echo '?- father(fred,X).' | nc localhost 8080
-//     telnet localhost 8080
+//     echo '?- father(fred,X).' | nc localhost 7071
+//     telnet localhost 7071
 //
 // One line in, the answer out.  A client that sends "exit" (or closes the
 // connection) is disconnected; the server itself keeps running.

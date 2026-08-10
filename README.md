@@ -33,7 +33,7 @@ docs/       architecture notes
 ```sh
 ./prolog                        # empty database
 ./prolog samples/family.pl      # load a program at startup
-./prolog --port 8080 f.pl       # also serve it over TCP (see below)
+./prolog --port 7071 f.pl       # also serve it over TCP (see below)
 ./prolog --help                 # usage summary (-h also works)
 ```
 
@@ -93,9 +93,9 @@ line, get the answer back as text, so anything that can write to a socket can
 drive it:
 
 ```sh
-./prolog --port 8080 samples/family.pl
+./prolog --port 7071 samples/family.pl
 
-echo '?- father(fred,X).' | nc localhost 8080
+echo '?- father(fred,X).' | nc localhost 7071
 ```
 ```
 X=peter
@@ -133,13 +133,13 @@ stays shared — a clause typed at the prompt, one asserted by an agent, and the
 listing in the browser are all the same database.
 
 ```sh
-docker compose up --build        # pi on 8080, piview on http://127.0.0.1:7070
+docker compose up --build        # pi on 7071, piview on http://127.0.0.1:7070
 ```
 
 or, against an interpreter you started yourself:
 
 ```sh
-./prolog --port 8080 samples/family.pl
+./prolog --port 7071 samples/family.pl
 cd piview/server && ./gradlew installDist
 ./build/install/piview/bin/piview --samples ../../samples
 ```

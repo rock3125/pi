@@ -120,7 +120,7 @@ transitions on hover, disclosure and tabs. Everything respects
 
 pi's own. `clauses`, `predicates`, `solutions`, `assert`, `answering`. Errors
 name the problem and the recovery: *"pi is not answering. Start it with its port
-open — `./prolog --port 8080 samples/family.pl` — and this view reconnects on
+open — `./prolog --port 7071 samples/family.pl` — and this view reconnects on
 its own."* The empty console teaches the two things that trip people up in this
 dialect: there is no `assert/1`, and `=` is not `is`.
 

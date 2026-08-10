@@ -31,7 +31,7 @@ docker compose up --build
 ```
 
 Then open <http://127.0.0.1:7070>. That brings up two containers — pi built from
-source and serving on 8080, and piview serving the web view on 7070 with the MCP
+source and serving on 7071, and piview serving the web view on 7070 with the MCP
 endpoint at `/mcp`. Both ports are published to loopback only.
 
 ### On a server
@@ -63,7 +63,7 @@ Start pi with its port open, then piview:
 
 ```sh
 make                                    # builds ./prolog
-./prolog --port 8080 samples/family.pl
+./prolog --port 7071 samples/family.pl
 
 cd piview/server
 ./gradlew installDist                   # builds the ui too; needs node
@@ -88,7 +88,7 @@ Over stdio — add to `.mcp.json`, or `claude mcp add`:
   "mcpServers": {
     "piview": {
       "command": "/path/to/pi/piview/server/build/install/piview/bin/piview",
-      "args": ["--stdio", "--port", "8080", "--samples", "/path/to/pi/samples"]
+      "args": ["--stdio", "--port", "7071", "--samples", "/path/to/pi/samples"]
     }
   }
 }
@@ -123,7 +123,7 @@ Every tool returns both a text block laid out the way pi lays it out and a
 
 ```
 --host <host>       host pi is listening on            (default 127.0.0.1)
---port <n>          pi's --port                        (default 8080)
+--port <n>          pi's --port                        (default 7071)
 --web-port <n>      port for the web view              (default 7070)
 --bind <addr>       interface for the web view         (default 127.0.0.1)
 --ui-dir <path>     serve the ui from a directory instead of the jar

@@ -240,7 +240,7 @@ function Disconnected({ socketOpen, detail }: { socketOpen: boolean; detail?: st
         {socketOpen ? (
           <>
             <strong>pi is not answering.</strong> Start it with its port open —{' '}
-            <code>./prolog --port 8080 samples/family.pl</code> — and this view reconnects on its
+            <code>./prolog --port 7071 samples/family.pl</code> — and this view reconnects on its
             own. {detail && <span style={{ color: 'var(--text-3)' }}>{detail}</span>}
           </>
         ) : (

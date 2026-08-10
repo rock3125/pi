@@ -67,8 +67,8 @@ void Usage(const char* program,FILE* out)
 	fprintf(out,"and the answer comes back as text.  The prompt keeps working while\n");
 	fprintf(out,"clients are connected, and they all share the one database:\n");
 	fprintf(out,"\n");
-	fprintf(out,"    %s --port 8080 samples/family.pl\n",program);
-	fprintf(out,"    echo '?- father(fred,X).' | nc localhost 8080\n");
+	fprintf(out,"    %s --port 7071 samples/family.pl\n",program);
+	fprintf(out,"    echo '?- father(fred,X).' | nc localhost 7071\n");
 	fprintf(out,"\n");
 	fprintf(out,"example: %s samples/family.pl\n",program);
 };

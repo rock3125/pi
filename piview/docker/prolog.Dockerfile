@@ -22,7 +22,7 @@ COPY --from=build /src/prolog /usr/local/bin/prolog
 COPY samples ./samples
 
 USER pi
-EXPOSE 8080
+EXPOSE 7071
 
 # `--bind '*'` is needed for piview in another container to reach this one.
 # That is safe here only because the port is published to 127.0.0.1 in
@@ -31,4 +31,4 @@ EXPOSE 8080
 #
 # pi reads its prompt from stdin and exits on end-of-file, so the compose
 # service keeps stdin open and allocates a tty.
-CMD ["prolog", "--port", "8080", "--bind", "*", "samples/family.pl"]
+CMD ["prolog", "--port", "7071", "--bind", "*", "samples/family.pl"]

@@ -95,7 +95,7 @@ run from `/opt/piview`.
 | `PIVIEW_BIND` | `127.0.0.1` | address the web view listens on |
 | `PIVIEW_PORT` | `7070` | port for the web view and `/mcp` |
 | `PI_BIND` | `127.0.0.1` | address pi's raw TCP port is published on |
-| `PI_PORT` | `8080` | pi's raw TCP port |
+| `PI_PORT` | `7071` | pi's raw TCP port |
 | `PI_PROGRAM` | `/app/programs/family.pl` | loaded when the interpreter starts |
 | `PIVIEW_PROGRAMS` | `/var/lib/piview/programs` | host directory mounted at `/app/programs` |
 

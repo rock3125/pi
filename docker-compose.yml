@@ -19,9 +19,9 @@ services:
     ports:
       # loopback only: the protocol has no authentication, and `load` reads
       # any file the interpreter can
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:7071:7071"
     healthcheck:
-      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7071"]
       interval: 5s
       timeout: 3s
       retries: 10

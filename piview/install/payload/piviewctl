@@ -104,7 +104,7 @@ case "$cmd" in
         load_config
         printf 'connecting to the interpreter; type exit to leave\n'
         # the container has netcat for its health check, so no host tools needed
-        compose exec prolog nc 127.0.0.1 8080
+        compose exec prolog nc 127.0.0.1 7071
         ;;
 
     version)

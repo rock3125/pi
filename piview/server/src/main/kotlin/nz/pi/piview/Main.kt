@@ -24,7 +24,7 @@ piview - an MCP server and web view for a running PI prolog interpreter
 
 Options:
   --host <host>       host pi is listening on            (default 127.0.0.1)
-  --port <n>          pi's --port                        (default 8080)
+  --port <n>          pi's --port                        (default 7071)
   --web-port <n>      port for the web view              (default 7070)
   --bind <addr>       interface for the web view         (default 127.0.0.1)
   --ui-dir <path>     serve the ui from this directory instead of the jar
@@ -36,7 +36,7 @@ Options:
 
 pi has to be started first, with its TCP port open:
 
-  ./prolog --port 8080 samples/family.pl
+  ./prolog --port 7071 samples/family.pl
 
 Then:
 
@@ -48,7 +48,7 @@ The MCP endpoint is also served over http at /mcp on the web port.
 
 private class Options(args: Array<String>) {
     var host = "127.0.0.1"
-    var port = 8080
+    var port = 7071
     var webPort = 7070
     var bind = "127.0.0.1"
     var uiDir: File? = null

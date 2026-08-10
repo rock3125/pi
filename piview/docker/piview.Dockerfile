@@ -40,4 +40,4 @@ USER piview
 EXPOSE 7070
 
 ENTRYPOINT ["java", "-jar", "/app/piview.jar"]
-CMD ["--host", "prolog", "--port", "8080", "--bind", "0.0.0.0", "--web-port", "7070", "--samples", "/app/samples"]
+CMD ["--host", "prolog", "--port", "7071", "--bind", "0.0.0.0", "--web-port", "7070", "--samples", "/app/samples"]
