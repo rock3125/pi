@@ -145,7 +145,9 @@ cd piview/server && ./gradlew installDist
 ```
 
 The server is Kotlin, the view is React and TypeScript, and both ship in one
-jar. See [piview/README.md](piview/README.md).
+jar. To put it on a server, `piview/install/build-installer.sh` makes a package
+that installs it under systemd on Ubuntu 24.04, Debian 13 or Fedora 44. See
+[piview/README.md](piview/README.md).
 
 ## Language
 

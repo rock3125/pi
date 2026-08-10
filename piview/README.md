@@ -34,6 +34,29 @@ Then open <http://127.0.0.1:7070>. That brings up two containers — pi built fr
 source and serving on 8080, and piview serving the web view on 7070 with the MCP
 endpoint at `/mcp`. Both ports are published to loopback only.
 
+### On a server
+
+Build an installer, copy it over, run it. It installs the stack under systemd,
+so it comes back after a reboot.
+
+```sh
+./piview/install/build-installer.sh                # 150 KB; the server builds
+./piview/install/build-installer.sh --with-images   # 160 MB; the server builds nothing
+```
+
+```sh
+scp piview/install/dist/piview-1.0.0-installer.tar.gz user@server:
+ssh user@server
+tar xzf piview-1.0.0-installer.tar.gz && cd piview-1.0.0-installer
+sudo ./install.sh
+```
+
+Tested on Ubuntu 24.04, Debian 13 and Fedora 44, on a host that already runs
+docker with the compose plugin. `piviewctl` manages it afterwards. The details,
+including how to put it behind an authenticating proxy, are in
+[install/payload/README.md](install/payload/README.md) — the same file the
+installer leaves in `/opt/piview`.
+
 ### Without Docker
 
 Start pi with its port open, then piview:
