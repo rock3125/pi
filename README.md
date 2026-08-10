@@ -227,7 +227,8 @@ Two further suites need `python3` and are skipped without it:
 
 There is a fuller architecture description in
 [docs/c4-model.md](docs/c4-model.md) — context, containers, components and the
-code-level structures, with diagrams. The short version:
+code-level structures, with diagrams, for the interpreter and for piview beside
+it. The short version:
 
 Source text becomes a tree of `Structure` nodes ([parser.cpp](src/parser.cpp)),
 which is flattened into a list of `Node` records ([node.cpp](src/node.cpp)). Each

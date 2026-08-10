@@ -4,6 +4,7 @@
 #   make debug      build with symbols, no optimisation and tracing enabled
 #   make test       build and run the regression tests
 #   make docs       rebuild docs/c4-model.html from the markdown
+#   make pdf        print docs/c4-model.pdf from that html
 #   make clean      remove all build output
 #
 # override the compiler with e.g.  make CXX=clang++
@@ -42,7 +43,7 @@ SOURCES  := binding.cpp \
 OBJECTS  := $(addprefix $(BUILDDIR)/,$(SOURCES:.cpp=.o))
 DEPS     := $(OBJECTS:.o=.d)
 
-.PHONY: all debug test docs clean
+.PHONY: all debug test docs pdf clean
 
 all: $(TARGET)
 
@@ -58,6 +59,14 @@ docs: docs/c4-model.html
 
 docs/c4-model.html: docs/c4-model.md docs/build-html.py
 	@python3 docs/build-html.py
+
+# the pdf is that same page printed by headless chrome, so the page breaks are
+# decided by the print stylesheet in build-html.py.  Ghostscript sets the title
+# and author afterwards, which chrome does not carry over from the html.
+pdf: docs/c4-model.pdf
+
+docs/c4-model.pdf: docs/c4-model.html docs/build-html.py
+	@python3 docs/build-html.py --pdf
 
 debug: CXXFLAGS := -std=c++17 $(WARN) -g -O0 -D_DEBUG -pthread
 debug: clean $(TARGET)
