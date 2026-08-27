@@ -5,6 +5,8 @@ used. It is deliberately compact: a hand-written recursive-descent parser, a
 flat node stack, and a database with an indexed `name/arity` lookup, in around
 seven thousand lines.
 
+![piview: the database on the left, solved queries in the console, relations on the right](docs/piview.png)
+
 There are no third-party dependencies — just the C++ standard library, plus
 POSIX termios for the line editor and BSD sockets for the optional server.
 
@@ -131,8 +133,6 @@ two more faces: an MCP server, so an agent can query and edit the database with
 typed tools, and a web view of the same interpreter in the browser. The database
 stays shared — a clause typed at the prompt, one asserted by an agent, and the
 listing in the browser are all the same database.
-
-![piview: the database on the left, solved queries in the console, relations on the right](docs/piview.png)
 
 The view opens light; the button beside *clear database* switches it to a dark
 phosphor ground.
