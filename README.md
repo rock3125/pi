@@ -132,6 +132,11 @@ typed tools, and a web view of the same interpreter in the browser. The database
 stays shared — a clause typed at the prompt, one asserted by an agent, and the
 listing in the browser are all the same database.
 
+![piview: the database on the left, solved queries in the console, relations on the right](docs/piview.png)
+
+The view opens light; the button beside *clear database* switches it to a dark
+phosphor ground.
+
 ```sh
 docker compose up --build        # pi on 7071, piview on http://127.0.0.1:7070
 ```
