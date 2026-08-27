@@ -1,4 +1,4 @@
-# PI — Prolog Interpreter Engine
+# PI, Prolog Interpreter Engine
 
 A small Prolog interpreter written in C++, built to be read as much as to be
 used. It is deliberately compact: a hand-written recursive-descent parser, a
@@ -7,7 +7,7 @@ seven thousand lines.
 
 ![piview: the database on the left, solved queries in the console, relations on the right](docs/piview.png)
 
-There are no third-party dependencies — just the C++ standard library, plus
+There are no third-party dependencies, just the C++ standard library, plus
 POSIX termios for the line editor and BSD sockets for the optional server.
 
 ## Building
@@ -43,13 +43,13 @@ At the `>` prompt:
 
 | Input | Effect |
 | --- | --- |
-| `?- father(fred,X).` | run a query — starts with `?-`, ends with `.` |
+| `?- father(fred,X).` | run a query, starts with `?-`, ends with `.` |
 | `likes(pete,prolog).` | anything else is asserted into the database |
 | `list` | list the database; `list 3` or `list 3-7` for a range |
 | `delete 3-7` | remove rules by their `list` number |
 | `load <file>` | load a program (adds to the current database) |
 | `new` | clear the database |
-| `tron` / `troff` | stack tracing on/off — needs `make debug` |
+| `tron` / `troff` | stack tracing on/off, needs `make debug` |
 | `help` | command summary |
 | `exit` | quit (`quit`, `bye` and Ctrl-D also work) |
 
@@ -106,13 +106,13 @@ X=micheal
 X=jj
 ```
 
-Everything that works at the prompt works over the socket — queries, new
+Everything that works at the prompt works over the socket, queries, new
 clauses, `list`, `delete`, `load`, `new`, `help`. Several commands can go down
 one connection and are answered in order; `exit` closes that connection and
 leaves the server running.
 
 The prompt stays live while clients are connected, and they all share one
-database — a clause typed at the prompt is visible to every client, and a
+database, a clause typed at the prompt is visible to every client, and a
 clause a client asserts is visible at the prompt.
 
 Each connection gets its own thread, but **commands are executed one at a
@@ -126,12 +126,12 @@ reads files from the server's filesystem, so anyone who can reach the port can
 read any file the interpreter can. Use `--bind '*'` to listen on every
 interface only on a network you trust.
 
-## piview — MCP server and web view
+## piview, MCP server and web view
 
 [piview/](piview) attaches to a running interpreter over that port and gives it
 two more faces: an MCP server, so an agent can query and edit the database with
 typed tools, and a web view of the same interpreter in the browser. The database
-stays shared — a clause typed at the prompt, one asserted by an agent, and the
+stays shared, a clause typed at the prompt, one asserted by an agent, and the
 listing in the browser are all the same database.
 
 The view opens light; the button beside *clear database* switches it to a dark
@@ -222,16 +222,16 @@ sample programs.
 
 Two further suites need `python3` and are skipped without it:
 
-- [tests/test_interactive.py](tests/test_interactive.py) — 28 line-editor
+- [tests/test_interactive.py](tests/test_interactive.py), 28 line-editor
   checks, driving the interpreter under a pty and asserting on the answer each
   edited line produces.
-- [tests/test_server.py](tests/test_server.py) — 13 server checks, including
+- [tests/test_server.py](tests/test_server.py), 13 server checks, including
   20 concurrent clients and that the prompt and the network share a database.
 
 ## How it works
 
 There is a fuller architecture description in
-[docs/c4-model.md](docs/c4-model.md) — context, containers, components and the
+[docs/c4-model.md](docs/c4-model.md), context, containers, components and the
 code-level structures, with diagrams, for the interpreter and for piview beside
 it. The short version:
 
@@ -272,4 +272,4 @@ keeps printing on the main thread.
 
 Copyright (C) 2004 Rock de Vocht.
 
-Licensed under the Apache License, Version 2.0 — see [LICENSE](LICENSE).
+Licensed under the Apache License, Version 2.0, see [LICENSE](LICENSE).
