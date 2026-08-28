@@ -13,8 +13,13 @@ RUN npm run build
 
 # ---------------------------------------------------------------- the server
 FROM eclipse-temurin:21-jdk AS server
-WORKDIR /build
+# the repository layout is reproduced rather than flattened: processResources
+# reaches out to ../../docs for the ISO primer, and from a flat /build that
+# path escapes above the root - gradle then walks the whole filesystem and
+# dies on /dev/core rather than saying what it could not find
+WORKDIR /build/piview/server
 COPY piview/server ./
+COPY docs/iso-prolog.pdf /build/docs/iso-prolog.pdf
 
 # node is not in this image, so the gradle build is told to skip its own UI
 # step and the bundle from the stage above is dropped straight into the
@@ -31,7 +36,7 @@ RUN apt-get update \
 RUN useradd --create-home --shell /usr/sbin/nologin piview
 WORKDIR /app
 
-COPY --from=server /build/build/libs/piview-1.0.0.jar ./piview.jar
+COPY --from=server /build/piview/server/build/libs/piview-1.0.0.jar ./piview.jar
 # the same path as in the prolog image: the ui hands pi a path to `load`, and
 # pi resolves it in its own container
 COPY samples ./samples

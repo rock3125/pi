@@ -166,7 +166,10 @@ export function DatabasePanel({
         <div className="samples__list">
           <a
             className="chip"
-            href="/iso-prolog.pdf"
+            /* relative, like every other asset the bundle emits: nginx serves
+               this view from /pi/ with the prefix stripped, and an absolute
+               path would leave that location and 404 on the site root */
+            href="iso-prolog.pdf"
             download
             title="How ISO Prolog works, with examples - and what pi implements of it"
           >

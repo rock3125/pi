@@ -85,9 +85,20 @@ tasks.processResources {
         dependsOn(npmBuild)
         from(uiDist) { into("web") }
     }
-    // the ISO prolog primer rides along under /web so the view can offer it
+    // The ISO prolog primer rides along under /web so the view can offer it
     // as a download.  It is checked in under docs/, built by `make pdf`.
-    from(layout.projectDirectory.file("../../docs/iso-prolog.pdf")) { into("web") }
+    //
+    // Guarded, because handing gradle a path that is not there is not a
+    // no-op: it walks what it can reach instead and dies somewhere else
+    // entirely ("Cannot snapshot /dev/core").  A build without the
+    // repository around it should say so and carry on.
+    val primer = layout.projectDirectory.file("../../docs/iso-prolog.pdf")
+    if (primer.asFile.isFile) {
+        from(primer) { into("web") }
+    } else {
+        logger.warn("build.gradle.kts: {} is missing - the web view's primer " +
+                    "download will 404", primer.asFile.path)
+    }
 }
 
 tasks.test {
