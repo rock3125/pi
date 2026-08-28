@@ -21,6 +21,14 @@
 
 #include "query.h"
 
+//! defined further down - resolve a stack index through references and
+//! bound variables to the slot that really holds the value
+static int ResolveIndex(int index);
+
+//! defined further down - the slots a term occupies where it sits, which
+//! for a substituted reference slot is one, whatever it points at
+static int RawSize(int index);
+
 //////////////////////////////////////////////////////////////////
 
 Query::Query(std::vector<Node*> _query,DataBase& _database,int level)
@@ -144,7 +152,10 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 			bool success=Execute(level+1,index,s1,cut);
 			if (success)
 			{
-				Engine::FilterSet(pc,s1);
+				//! hand every binding up unfiltered: the candidate loop
+				//! that ran this body prunes to its caller's variables by
+				//! slot range, and Materialize needs the clause-variable
+				//! bindings to finish values the head only sketched
 				bindings=s1;
 			}
 			Trace1(level+1,success?"EXEC :yes":"EXEC :no");
@@ -191,11 +202,17 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 							// database rule unmodified till now
 							if (n->type==Structure::ST_VAR)
 							{
+								//! a variable stands for the binding's variable when
+								//! it resolves to that variable's slot - matching by
+								//! name confuses a clause's X with its caller's X,
+								//! and misses a variable reached through a chain
+								int r=ResolveIndex(index+j);
+
 								bool found = false;
 								for (size_t k=0; k<size3 && !found; k++)
 								{
 									int lhs = b[k]->lhs;
-									if (n->name==Engine::GetStack(lhs)->name)
+									if (r==lhs)
 									{
 										// this type of binding (ST_REFERENCE)
 										// should only exist inside the query engine
@@ -433,13 +450,7 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 				bool success = false;
 				for (size_t i=0; i<listSize && !cut; i++)
 				{
-					//! push this clause onto the stack forward unified
-					//! and execute it - if it is successful, take its
-					//! backwards unified list and put it into mine
-
-					//! stack stuff
-					//! push each of these matching clauses (a copy of)
-					//! on the stack to work with - one at a time of course
+					//! push a fresh copy of the clause onto the stack
 					int stackIndex=Engine::GetStackSize();
 					std::vector<Node*> n=database.Get(list[i]);
 					size_t size=n.size();
@@ -449,48 +460,52 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 						Engine::AddToStack(nn);
 					}
 
-					//! Forward unify new clause
-					//! stackIndex is the index of the new clause on the stack
-					size_t numUnifications=0;
+					//! link the copy's repeated variables to their first
+					//! occurrence, so a head like max(X,Y,X) routes its
+					//! first argument to its third
+					Engine::ForwardBind(stackIndex,int(size));
 
-					if (Engine::ForwardUnify(level,stackIndex,pc,numUnifications))
+					//! the head is the clause itself for a fact, the left
+					//! side of the implies for a rule
+					bool isRule=(Engine::GetStack(stackIndex)->type==Structure::ST_IMPLIES);
+					int head=isRule?stackIndex+1:stackIndex;
+
+					//! one real unification of head against goal.  it binds
+					//! in both directions - the clause's variables take the
+					//! goal's values and the goal's variables take the
+					//! head's - and records everything it bound, so the
+					//! goal can be restored before the next candidate
+					BindingList attempt;
+					if (Unify(head,pc,attempt))
 					{
-						//! if the matching clause is a rule then its body has to
-						//! be proved before the head may be accepted.  this holds
-						//! however few variables the head unification bound - a
-						//! ground head such as "r :- fail." binds nothing at all,
-						//! and used to be accepted without ever running its body
+						//! a rule's body has to be proved before the head
+						//! may be accepted - however few variables the head
+						//! unification bound, since "r :- fail." binds none
 						bool bodyProved=true;
 						Set bodyBindings;
 
-						if (Engine::GetStack(stackIndex)->type==Structure::ST_IMPLIES)
+						if (isRule)
 						{
-							//! build the new query to be executed
+							//! build the body query from the clause copy -
+							//! its variables carry the head bindings through
+							//! their forward links into the clause copy
 							std::vector<Node*> newQuery;
-							size_t size=n.size();
-
-							//! go over each of the new query's items on the stack
-							//! and resolve them accordingly
 							for (size_t j=0; j<size;j++)
 							{
-								Node* n=Engine::GetStack(stackIndex+j);
+								Node* qn=Engine::GetStack(stackIndex+j);
 
-								// if there are any variables left in the new query
-								// that are the same name as the already resolved
-								// variables - then substitute them too
-								if (n->type==Structure::ST_VAR)
+								// point later occurrences of a variable at
+								// the same substitute as the first
+								if (qn->type==Structure::ST_VAR)
 								{
-									// see if this stack member is equivalently named
-									// to another variable and if this var has a substitute
-									// already - make it point to the same thing
 									for (size_t k=0; k<j; k++)
 									{
 										Node* n2=Engine::GetStack(stackIndex+k);
-										if (n2->type==Structure::ST_VAR && n2->name==n->name)
-											n->fu=n2->fu;
+										if (n2->type==Structure::ST_VAR && n2->name==qn->name)
+											qn->fu=n2->fu;
 									}
 								}
-								newQuery.push_back(new Node(*n));
+								newQuery.push_back(new Node(*qn));
 							}
 
 							{
@@ -504,57 +519,79 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 								safe_delete(newQuery[j]);
 							}
 							newQuery.clear();
-
-							// check nothing in the bindings is non-sensical
-							// i.e. a var bound to an unbound variable
-							for (size_t j=0; j<bodyBindings.size() && bodyProved; j++)
-							{
-								for (size_t k=0; k<bodyBindings[j].size(); k++)
-								{
-									Node* r = Engine::GetStack(bodyBindings[j][k]->rhs);
-									if (r->type==Structure::ST_VAR && !Valid(r->fu))
-									{
-										bodyProved=false;
-										break;
-									}
-								}
-							}
 						}
 
 						if (bodyProved)
 						{
-							//! could we resolve anything forward?
-							//! i.e. we can't substitute any variables
-							//!      in the new query with old ones
-							if (numUnifications>0)
-							{
-								success=true;
+							success=true;
 
-								//! this result set becomes relevant for the parent
-								for (size_t j=0; j<bodyBindings.size(); j++)
+							//! what the caller gets: its own variables bound
+							//! by the head unification - materialised, since
+							//! the undo below takes the raw bindings back -
+							//! plus its variables the body bound directly.
+							//! a head value the body completed (the R in
+							//! append's [H|R]) is resolved per body solution
+							if (bodyBindings.empty())
+							{
+								BindingList out;
+								BindingList none;
+								for (size_t j=0; j<attempt.size(); j++)
 								{
-									bindings.push_back(bodyBindings[j]);
+									if (attempt[j]->lhs<stackIndex)
+									{
+										out.push_back(Engine::NewBinding(attempt[j]->lhs,
+											Materialize(attempt[j]->rhs,none)));
+									}
 								}
+								if (!out.empty())
+									bindings.push_back(out);
 							}
 							else
 							{
-								//! backward unify - i.e. take the variables
-								//! of the original query and see if it can
-								//! be unified with the forward query's non variables
-								BindingList b;
-								if (Engine::CreateBindings(level,stackIndex,pc,b))
+								for (size_t k=0; k<bodyBindings.size(); k++)
 								{
-									success=true;
-									if (!b.empty())
-										bindings.push_back(b);
+									BindingList& bs=bodyBindings[k];
+									BindingList out;
+									for (size_t j=0; j<attempt.size(); j++)
+									{
+										if (attempt[j]->lhs<stackIndex)
+										{
+											out.push_back(Engine::NewBinding(attempt[j]->lhs,
+												Materialize(attempt[j]->rhs,bs)));
+										}
+									}
+
+									//! the body's own bindings of this goal's
+									//! variables - already materialised at the
+									//! level that made them
+									for (size_t j=0; j<bs.size(); j++)
+									{
+										if (bs[j]->lhs>=stackIndex)
+											continue;
+										bool have=false;
+										for (size_t m=0; m<out.size() && !have; m++)
+											have=(out[m]->lhs==bs[j]->lhs);
+										if (!have)
+											out.push_back(bs[j]);
+									}
+
+									if (!out.empty())
+										bindings.push_back(out);
 								}
 							}
 						}
-
-						//! cut the rest of the questions early?
-						if (cut)
-							break;
 					}
+
+					//! take back whatever the head attempt bound - the next
+					//! candidate must see the goal exactly as it was
+					for (size_t j=0; j<attempt.size(); j++)
+					{
+						Engine::GetStack()[attempt[j]->lhs]->fu=-1;
+					}
+
+					//! a cut in the body commits to this clause
+					if (cut)
+						break;
 				}
 				return success;
 			}
@@ -652,6 +689,11 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 
 bool Query::ExecuteQuery(void)
 {
+	//! occurrences of one variable in the query are separate nodes - link
+	//! the later ones to the first, the way a clause's are linked, so that
+	//! solving one goal instantiates the variable everywhere it appears
+	Engine::ForwardBind(queryStart,int(query.size()));
+
 	Set s;
 	bool cut = false;
 	if (ExecuteQueryRecursive(1,s,cut))
@@ -774,6 +816,164 @@ int Query::ListTail(int listIndex)
 		index+=RawSize(index);
 	}
 	return at;
+};
+
+int Query::LookupByName(size_t name,BindingList& bs)
+{
+	if (name==0)
+		return -1;
+	for (size_t i=0; i<bs.size(); i++)
+	{
+		Node* n=Engine::GetStack()[bs[i]->lhs];
+		if (n->type==Structure::ST_VAR && n->name==name)
+			return bs[i]->rhs;
+	}
+	return -1;
+};
+
+int Query::Materialize(int index,BindingList& bs)
+{
+	int at=int(Engine::GetStackSize());
+	MaterializeNode(index,bs,0);
+	return at;
+};
+
+int Query::MaterializeNode(int index,BindingList& bs,int depth)
+{
+	//! a lookup chain that loops (a name bound to itself through the
+	//! body solution) would otherwise recurse forever
+	if (depth>10000)
+		return 0;
+
+	index=ResolveIndex(index);
+	Node* n=Engine::GetStack()[index];
+
+	switch (n->type)
+	{
+		case Structure::ST_VAR:
+		{
+			//! free after resolving - the body solution may still know it
+			int rhs=LookupByName(n->name,bs);
+			if (Valid(rhs))
+				return MaterializeNode(rhs,bs,depth+1);
+
+			Node* copy=new Node(*n);
+			copy->fu=-1;
+			copy->parent=-1;
+			copy->next=-1;
+			copy->size=1;
+			Engine::AddToStack(copy);
+			return 1;
+		}
+		case Structure::ST_INT:
+		case Structure::ST_FLOAT:
+		case Structure::ST_BOOL:
+		case Structure::ST_STRING:
+		{
+			Node* copy=new Node(*n);
+			copy->fu=-1;
+			copy->parent=-1;
+			copy->next=-1;
+			copy->size=1;
+			Engine::AddToStack(copy);
+			return 1;
+		}
+		case Structure::ST_STRUCTURE:
+		case Structure::ST_LIST:
+		{
+			Node* copy=new Node(*n);
+			copy->fu=-1;
+			copy->parent=-1;
+			copy->next=-1;
+			copy->size=1;
+			Engine::AddToStack(copy);
+
+			int written=1;
+			int child=index+1;
+			for (size_t i=0; i<n->arity; i++)
+			{
+				written+=MaterializeNode(child,bs,depth+1);
+				child+=RawSize(child);
+			}
+			copy->size=written;
+			return written;
+		}
+		case Structure::ST_HEADTAIL:
+		{
+			//! a bound pattern names a real list - flatten [H|T] into the
+			//! list [H, elements of T...] so answers print as [1,2,3]
+			Node* out=new Node();
+			out->type=Structure::ST_LIST;
+			Engine::AddToStack(out);
+
+			int written=1;
+			size_t elements=0;
+			int cur=index;
+			for (;;)
+			{
+				//! the pattern's head is one element
+				int head=cur+1;
+				written+=MaterializeNode(head,bs,depth+1);
+				elements++;
+
+				//! then whatever the tail turns out to be
+				int tail=ResolveIndex(head+RawSize(head));
+				Node* tn=Engine::GetStack()[tail];
+				if (tn->type==Structure::ST_VAR)
+				{
+					int rhs=LookupByName(tn->name,bs);
+					if (Valid(rhs))
+					{
+						tail=ResolveIndex(rhs);
+						tn=Engine::GetStack()[tail];
+					}
+				}
+
+				if (tn->type==Structure::ST_HEADTAIL)
+				{
+					//! [H1|[H2|T]] - keep flattening
+					cur=tail;
+					depth++;
+					if (depth>10000)
+						break;
+					continue;
+				}
+				if (tn->type==Structure::ST_LIST)
+				{
+					int child=tail+1;
+					for (size_t i=0; i<tn->arity; i++)
+					{
+						written+=MaterializeNode(child,bs,depth+1);
+						elements++;
+						child+=RawSize(child);
+					}
+					break;
+				}
+
+				//! a tail nothing determined - keep the variable visible
+				//! rather than inventing elements
+				written+=MaterializeNode(tail,bs,depth+1);
+				elements++;
+				break;
+			}
+			out->arity=elements;
+			out->size=written;
+			return written;
+		}
+		default:
+		{
+			//! an expression subtree used as a value - copy it verbatim
+			int size=n->size;
+			for (int i=0; i<size; i++)
+			{
+				Node* copy=new Node(*Engine::GetStack()[index+i]);
+				copy->parent=-1;
+				copy->next=-1;
+				Engine::AddToStack(copy);
+			}
+			return size;
+		}
+	}
 };
 
 bool Query::UnifyLists(int a,int b,BindingList& bindings)
@@ -1110,103 +1310,44 @@ bool Query::ListsCanBind(int stackIndex,int dbIndex,int dbLineIndex)
 	// be resolved it can bind to anything - so return true
 	if (n1->type==Structure::ST_VAR && Valid(n1->fu))
 	{
-		stackIndex=n1->fu;
-		n1=Engine::GetStack(Engine::GetForwardValue(n1->fu));
+		stackIndex=Engine::GetForwardValue(n1->fu);
+		n1=Engine::GetStack(stackIndex);
 	}
 	if (n1->type==Structure::ST_VAR)
 	{
 		return true;
 	}
 
-	switch (n1->type)
+	//! a [H|T] pattern on either side is worth a real attempt - this is
+	//! only a filter, and the unification decides properly
+	if (n1->type==Structure::ST_HEADTAIL || n2->type==Structure::ST_HEADTAIL)
 	{
-		case Structure::ST_LIST:
-		{
-			if (n2->type==Structure::ST_LIST)
-			{
-				// empty list with non-empty list
-				if ((n1->arity==0 && n2->arity!=0) ||
-					(n1->arity!=0 && n2->arity==0))
-					return false;
-
-				// empty list with empty list
-				if (n1->arity==0 && n2->arity==n1->arity)
-					return true;
-
-				// unify their head and tails
-				int sindex1 = stackIndex+1;
-				int sindex2 = sindex1 + SizeOfClause(sindex1);
-
-				int dbindex1 = dbLineIndex + 1;
-				int dbindex2 = dbindex1 + database.GetNode(dbIndex,dbindex1)->size;
-
-				if (ListsCanBind(sindex1,dbIndex,dbindex1))
-				{
-					Node* n3 = database.GetNode(dbIndex,dbindex2);
-					if (n3->type==Structure::ST_VAR)
-					{
-						return true;
-					}
-					else
-					{
-						if (n1->arity==n2->arity)
-						{
-							int arity = ((int)n1->arity) - 1;
-							for (int i=0; i<arity; i++)
-							{
-								n1=Engine::GetStack(sindex2);
-								n2=database.GetNode(dbIndex,dbindex2);
-
-								if (n1->type==Structure::ST_LIST || n2->type==Structure::ST_LIST)
-								{
-									if (!ListsCanBind(sindex2,dbIndex,dbindex2))
-										return false;
-								}
-								else
-								{
-									if (!CanBind(n1,n2))
-										return false;
-								}
-								
-								sindex2 += SizeOfClause(sindex2);
-								dbindex2 += database.GetNode(dbIndex,dbindex2)->size;
-							}
-
-							return true;
-						}
-					}
-				}
-			}
-			break;
-		}
-
-		case Structure::ST_INT:
-		{
-			if (n2->type==n1->type)
-				return (n1->i==n2->i);
-			break;
-		}
-		case Structure::ST_FLOAT:
-		{
-			if (n2->type==n1->type)
-				return (n1->f==n2->f);
-			break;
-		}
-		case Structure::ST_BOOL:
-		{
-			if (n2->type==n1->type)
-				return (n1->b==n2->b);
-			break;
-		}
-		case Structure::ST_STRUCTURE:
-		case Structure::ST_STRING:
-		{
-			if (n2->type==n1->type)
-				return (n1->name==n2->name) && (n1->arity==n2->arity);
-			break;
-		}
+		return true;
 	}
-	return false;
+
+	if (n1->type==Structure::ST_LIST)
+	{
+		if (n2->type!=Structure::ST_LIST)
+			return false;
+
+		//! two plain lists only unify at the same length
+		if (n1->arity!=n2->arity)
+			return false;
+
+		int sindex=stackIndex+1;
+		int dindex=dbLineIndex+1;
+		for (size_t i=0; i<n1->arity; i++)
+		{
+			if (!ListsCanBind(sindex,dbIndex,dindex))
+				return false;
+			sindex+=RawSize(sindex);
+			dindex+=database.GetNode(dbIndex,dindex)->size;
+		}
+		return true;
+	}
+
+	//! plain values compare directly
+	return CanBind(n1,n2);
 };
 
 std::vector<int> Query::GetMatchingClauses(int pc)
@@ -1309,7 +1450,10 @@ std::vector<int> Query::GetMatchingClauses(int pc)
 				}
 			}
 
-			index1+=SizeOfClause(index1);
+			//! a slot the AND substituted is one slot wide however large
+			//! the value it references - stepping by the value's size
+			//! would land the walk inside a neighbouring argument
+			index1+=RawSize(index1);
 			index2+=node[index2]->size;
 		}
 		if (canBind)

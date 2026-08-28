@@ -502,17 +502,33 @@ test([H|T]) :- write(H), nl, test(T).
 the same style. <code>member/2</code> is a lesson in nondeterminism &mdash;
 its second clause deliberately keeps looking past the element it found:</p>
 
-<pre class="code">member(X,[X|T]).                 % X is the head, or
-member(X,[H|T]) :- member(X,T).  % X is somewhere in the tail
+<pre class="code">member(X,[X|_]).                 % X is the head, or
+member(X,[_|T]) :- member(X,T).  % X is somewhere in the tail
 
-append([],L,L).
-append([H|T],L,[H|R]) :- append(T,L,R).</pre>
+?- member(X,[a,b,c]).
+<i>X=a</i>
+<i>X=b</i>
+<i>X=c</i></pre>
 
-<p>Because clauses are relations rather than functions, the standard
-<code>append/3</code> runs in any direction: <code>append([1],[2],Z)</code>
-builds a list, and <code>append(X,Y,[1,2])</code> <em>enumerates every way to
-split one</em> &mdash; the same two lines, read backwards. (pi's engine covers
-only part of this &mdash; see the last section.)</p>
+<p>Because clauses are relations rather than functions, one definition runs in
+every direction. <code>append/3</code> builds a list when its third argument
+is free &mdash; and read backwards, the same two lines <em>enumerate every way
+to split one</em>:</p>
+
+<pre class="code">append([],L,L).
+append([H|T],L,[H|R]) :- append(T,L,R).
+
+?- append([1,2],[3,4],Z).
+<i>Z=[1,2,3,4]</i>
+
+?- append(X,Y,[1,2]).
+<i>X=[]     Y=[1,2]</i>
+<i>X=[1]    Y=[2]</i>
+<i>X=[1,2]  Y=[]</i></pre>
+
+<p>That is the payoff of the model: <code>reverse/2</code>, <code>last/2</code>
+and the rest of the standard library are each a few lines in exactly this
+shape, and pi ships them in <code>samples/lists.pl</code>.</p>
 </section>
 
 <!-- ================================================================ 9 -->
@@ -628,11 +644,6 @@ not marked otherwise runs in it as printed:</p>
     There is no <code>assert/retract</code>: type a clause to add it,
     <code>delete</code> to remove one, <code>new</code> to start over. Agents
     do the same through piview's MCP tools.</li>
-<li><strong>Head patterns are plainer.</strong> <code>[H|T]</code> in a clause
-    head takes two variables, so <code>member(X,[X|_])</code> is written
-    <code>member(X,[X|T])</code>; predicates that route a value through
-    repeated head variables, or build lists in the head the way
-    <code>append/3</code> does, are beyond the engine.</li>
 <li><strong>Recursion is bounded</strong> at 1.5M stack entries, reported as
     &ldquo;infinite recursion detected&rdquo; rather than a crash.</li>
 </ul>

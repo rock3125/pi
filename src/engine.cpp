@@ -435,10 +435,10 @@ std::string Engine::PrettyPrint(int i)
 			{
 				str=str+Engine::PrettyPrint(index);
 				if ((j+1)<n->arity)
-					str=str+" ,";
+					str=str+",";
 				index+=SizeOfClause(index);
 			}
-			str=str+" ]";
+			str=str+"]";
 			break;
 		}
 		case Structure::ST_HEADTAIL:
@@ -449,10 +449,10 @@ std::string Engine::PrettyPrint(int i)
 			{
 				str=str+Engine::PrettyPrint(index);
 				if ((j+1)<n->arity)
-					str=str+" |";
+					str=str+"|";
 				index+=SizeOfClause(index);
 			}
-			str=str+" ]";
+			str=str+"]";
 			break;
 		}
 		default:
@@ -1119,9 +1119,36 @@ bool Engine::Equivalent(int a,int b)
 				}
 				return false;
 			}
+			case Structure::ST_LIST:
+			{
+				if (n1->arity!=n2->arity)
+					return false;
+
+				int index1=a+1;
+				int index2=b+1;
+				for (size_t i=0; i<n1->arity; i++)
+				{
+					if (!Equivalent(index1,index2))
+						return false;
+					index1+=SizeOfClause(index1);
+					index2+=SizeOfClause(index2);
+				}
+				return true;
+			}
+			case Structure::ST_HEADTAIL:
+			{
+				int index1=a+1;
+				int index2=b+1;
+				if (!Equivalent(index1,index2))
+					return false;
+				return Equivalent(index1+SizeOfClause(index1),index2+SizeOfClause(index2));
+			}
 			default:
 			{
-				PostCond("illegal tag"==NULL);
+				//! values can carry subtrees this comparison has no view
+				//! on - different is the safe answer, since UniqueSet then
+				//! keeps both solutions rather than dropping one
+				return false;
 			}
 		}
 	}
@@ -1716,9 +1743,21 @@ void Engine::GatherVars(int index,std::vector<int>& vars)
 		}
 		case Structure::ST_HEADTAIL:
 		{
-			// index +1 and index +2 are guaranteed to be vars in an H|T
-			vars.push_back(index+1);
-			vars.push_back(index+2);
+			//! the head may be any term and the tail a variable or a
+			//! list, so both sides are walked rather than assumed
+			int head=index+1;
+			Node* h=GetStack(head);
+			if (h->type==Structure::ST_VAR)
+				vars.push_back(head);
+			else
+				GatherVars(head,vars);
+
+			int tail=head+SizeOfClause(head);
+			Node* t2=GetStack(tail);
+			if (t2->type==Structure::ST_VAR)
+				vars.push_back(tail);
+			else
+				GatherVars(tail,vars);
 			break;
 		}
 		case Structure::ST_LIST:

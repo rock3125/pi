@@ -84,6 +84,20 @@ private:
 	//! so that a [H|T] pattern has a real list to give to T
 	int ListTail(int listIndex);
 
+	//! copy the term at index to the top of the stack with every bound
+	//! variable replaced by its value, so the copy stays meaningful after
+	//! the bindings that produced it are undone.  a variable that is
+	//! still free is looked up by name in the body solution bs - that is
+	//! how the R of append's [H|R] head gets what the recursion published
+	int Materialize(int index,BindingList& bs);
+
+	//! recursive worker for Materialize - appends the copy and returns
+	//! how many stack slots it wrote
+	int MaterializeNode(int index,BindingList& bs,int depth);
+
+	//! find what a body solution says a variable of this name is
+	int LookupByName(size_t name,BindingList& bs);
+
 	int queryStart;
 
 	std::vector<Node*>	query;

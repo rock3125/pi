@@ -1413,12 +1413,35 @@ Structure* PrologParser::SimpleVariable(void)
 				std::vector<Structure*> list=ParseList(specialList);
 				if (error) return NULL;
 
-				Structure* s = new Structure(list);
+				Structure* s;
 				if (specialList)
 				{
-					s->tag = Structure::ST_HEADTAIL;
+					//! the last item is the tail, everything before it an
+					//! element.  [a,b|T] sugars to [a|[b|T]], folded from
+					//! the right so every pattern node holds one head and
+					//! one tail
+					std::vector<Structure*> pair;
+					pair.push_back(list[list.size()-2]);
+					pair.push_back(list[list.size()-1]);
+					s=new Structure(pair);
+					s->tag=Structure::ST_HEADTAIL;
+
+					for (int i=int(list.size())-3; i>=0; i--)
+					{
+						std::vector<Structure*> outer;
+						outer.push_back(list[i]);
+						outer.push_back(s);
+						Structure* ht=new Structure(outer);
+						ht->tag=Structure::ST_HEADTAIL;
+						safe_delete(s);
+						s=ht;
+					}
 				}
-				
+				else
+				{
+					s=new Structure(list);
+				}
+
 				for (size_t i=0; i<list.size(); i++)
 				{
 					safe_delete(list[i]);
@@ -1457,22 +1480,21 @@ std::vector<Structure*> PrologParser::ParseList(bool& specialType)
 
 		list.push_back(sv);
 
-		// is this a special list [var|var]
+		// a '|' makes this a [Head|Tail] pattern - everything parsed so
+		// far are elements, and what follows the bar is the tail
 		token=GetNextToken();
 		if (token==tListSeperator)
 		{
-			if (list.size()!=1)
-			{
-				SetError("[var|var] list type can only contain two items");
-				break;
-			}
-
 			sv=Expression();
 			if (error) break;
 
-			if (list[0]->tag!=Structure::ST_VAR || sv->tag!=Structure::ST_VAR)
+			//! the tail stands for the rest of a list, so it must be
+			//! something that can be one
+			if (sv->tag!=Structure::ST_VAR && sv->tag!=Structure::ST_UNUSEDVAR &&
+				sv->tag!=Structure::ST_LIST && sv->tag!=Structure::ST_HEADTAIL)
 			{
-				SetError("[var|var] list type can only contain two variables");
+				SetError("the tail after | must be a variable or a list");
+				safe_delete(sv);
 				break;
 			}
 

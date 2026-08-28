@@ -201,11 +201,15 @@ len([H|T],N) :- len(T,M), N is M + 1.
 
 ## Samples
 
-Three programs in [samples/](samples):
+Four programs in [samples/](samples):
 
 ```sh
 ./prolog samples/family.pl
 > ?- half(peter,X).              # half-siblings: X=micheal, X=jj
+
+./prolog samples/lists.pl
+> ?- member(X,[a,b,c]).          # X=a, X=b, X=c
+> ?- append(X,Y,[1,2]).          # every way to split [1,2]
 
 ./prolog samples/test.pl
 > ?- test([a,b,c]).              # walks a list, printing each element
@@ -220,9 +224,10 @@ Three programs in [samples/](samples):
 make test
 ```
 
-[tests/run_tests.sh](tests/run_tests.sh) runs 50 checks covering unification,
-lists, arithmetic, cut, negation, head-variable propagation and the three
-sample programs.
+[tests/run_tests.sh](tests/run_tests.sh) runs 106 checks covering unification,
+lists, arithmetic, operator precedence, cut, negation, head-variable
+propagation, the relational list predicates (member/2, append/3 in every
+mode, reverse/2) and the sample programs.
 
 Two further suites need `python3` and are skipped without it:
 

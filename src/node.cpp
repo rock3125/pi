@@ -335,10 +335,10 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 			{
 				str=str+ToString(index,nlist);
 				if ((j+1)<n->arity)
-					str=str+" ,";
+					str=str+",";
 				index+=SizeOfNode(index,nlist);
 			}
-			str=str+" ]";
+			str=str+"]";
 			break;
 		}
 		case Structure::ST_HEADTAIL:
@@ -350,10 +350,10 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 			{
 				str=str+ToString(index,nlist);
 				if ((j+1)<n->arity)
-					str=str+" |";
+					str=str+"|";
 				index+=SizeOfNode(index,nlist);
 			}
-			str=str+" ]";
+			str=str+"]";
 			break;
 		}
 		default:

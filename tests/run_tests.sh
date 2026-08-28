@@ -173,7 +173,7 @@ check "= binds an atom" - '?- X = fred.' 'X=fred'
 check "= on equal atoms" - '?- fred = fred.' 'yes'
 check "= on different atoms" - '?- fred = mary.' 'no'
 check "= unifies structures" - '?- f(X,b) = f(a,Y).' 'X=a|Y=b'
-check "= destructures a list" - '?- [H|T] = [1,2,3].' 'H=1|T=[2 ,3 ]'
+check "= destructures a list" - '?- [H|T] = [1,2,3].' 'H=1|T=[2,3]'
 check "= on empty lists" - '?- [] = [].' 'yes'
 check "= empty list has no head" - '?- [H|T] = [].' 'no'
 
@@ -277,6 +277,51 @@ s(X) :- \+ q(X).
 check "negation in rule body, fails" - 'q(a).
 s(X) :- \+ q(X).
 ?- s(a).' 'no'
+
+######################################################################
+# relational list predicates - heads destructure, route repeated
+# variables, and build results as the recursion returns
+######################################################################
+
+LISTS='member(X,[X|_]).
+member(X,[_|T]) :- member(X,T).
+append([],L,L).
+append([H|T],L,[H|R]) :- append(T,L,R).'
+
+check "member checks" - "$LISTS
+?- member(2,[1,2,3])." 'yes'
+check "member rejects" - "$LISTS
+?- member(z,[a,b,c])." 'no'
+check "member enumerates" - "$LISTS
+?- member(X,[a,b,c])." 'X=a|X=b|X=c'
+check "member intersection" - "$LISTS
+?- member(X,[a,b]), member(X,[b,c])." 'X=b'
+check "append builds forward" - "$LISTS
+?- append([1,2],[3,4],Z)." 'Z=[1,2,3,4]'
+check "append finds a prefix" - "$LISTS
+?- append(X,[3,4],[1,2,3,4])." 'X=[1,2]'
+check "append finds a suffix" - "$LISTS
+?- append([1,2],Y,[1,2,3,4])." 'Y=[3,4]'
+check "append enumerates splits" - "$LISTS
+?- append(X,Y,[1,2])." 'X=[]|Y=[1,2]|X=[1]|Y=[2]|X=[1,2]|Y=[]'
+check "append chains" - "$LISTS
+?- append([1],[2],Z), append(Z,[3],W)." 'Z=[1,2]|W=[1,2,3]'
+check "reverse" - "$LISTS
+reverse([],[]).
+reverse([H|T],R) :- reverse(T,RT), append(RT,[H],R).
+?- reverse([1,2,3],R)." 'R=[3,2,1]'
+check "last element" - 'last(X,[X]).
+last(X,[_|T]) :- last(X,T).
+?- last(X,[a,b,c]).' 'X=c'
+check "repeated head var routes" - 'max(X,Y,X) :- X >= Y, !.
+max(X,Y,Y).
+?- max(7,3,M).' 'M=7'
+check "repeated head var, other side" - 'max(X,Y,X) :- X >= Y, !.
+max(X,Y,Y).
+?- max(3,7,M).' 'M=7'
+check "literal head in pattern" - '?- [a|T] = [a,b,c].' 'T=[b,c]'
+check "literal head must match" - '?- [a|T] = [z,b].' 'no'
+check "two elements before the bar" - '?- [A,B|T] = [1,2,3,4].' 'A=1|B=2|T=[3,4]'
 
 ######################################################################
 # cut
