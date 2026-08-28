@@ -85,6 +85,9 @@ tasks.processResources {
         dependsOn(npmBuild)
         from(uiDist) { into("web") }
     }
+    // the ISO prolog primer rides along under /web so the view can offer it
+    // as a download.  It is checked in under docs/, built by `make pdf`.
+    from(layout.projectDirectory.file("../../docs/iso-prolog.pdf")) { into("web") }
 }
 
 tasks.test {

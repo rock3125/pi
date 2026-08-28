@@ -35,7 +35,9 @@ source and serving on 7071, and piview serving the web view on 7070 with the MCP
 endpoint at `/mcp`. Both ports are published to loopback only.
 
 The view opens light. The button beside *clear database* switches it to the dark
-phosphor ground, and the browser remembers which one you chose.
+phosphor ground, and the browser remembers which one you chose. The *reference*
+chip under the samples downloads [an ISO Prolog primer](../docs/iso-prolog.pdf)
+as a pdf — the same file the server carries in its jar at `/iso-prolog.pdf`.
 
 ### On a server
 

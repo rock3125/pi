@@ -339,9 +339,9 @@ function Opening({
       <p className="empty__title">Nothing run yet.</p>
       <p className="empty__hint">
         Type a goal and press Enter. Anything that is not a goal is added to the database
-        instead — pi has no <code>assert/1</code>, so this is how a clause gets in. Remember{' '}
-        <code>=</code> both evaluates and unifies here: write <code>N = M + 1</code>, never{' '}
-        <code>is</code>.
+        instead — pi has no <code>assert/1</code>, so this is how a clause gets in. As in
+        standard prolog, <code>is</code> evaluates arithmetic — <code>N is M + 1</code> —
+        and <code>=</code> unifies.
       </p>
       {suggestions.length > 0 && (
         <div className="empty__goals">

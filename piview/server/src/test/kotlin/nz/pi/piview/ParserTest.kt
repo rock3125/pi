@@ -82,7 +82,7 @@ class ParserTest {
     @Test
     fun `written output before bindings`() {
         val raw = "moving\nX=2\n\n(execution time 0.00002164 seconds)\n"
-        val result = Parser.parseQuery("?- write(moving), nl, X = 3 - 1.", raw)
+        val result = Parser.parseQuery("?- write(moving), nl, X is 3 - 1.", raw)
 
         assertEquals("moving", result.output)
         assertEquals(listOf("X"), result.variables)
@@ -94,7 +94,7 @@ class ParserTest {
     private val listing = """
         00001    father(fred,peter).
         00002    father(fred,mark).
-        00009    different(X,Y) :- X!=Y.
+        00009    different(X,Y) :- X\=Y.
         00010    half(X,Y) :- father(Z,X), father(Z,Y) ; father(A,X), father(B,Y).
         00011    zzz(1).
         00012    len([ ],0).
@@ -163,11 +163,11 @@ class ParserTest {
             len([],0).
             len([H|T],N) :-
                 len(T,M),
-                N = M + 1.
+                N is M + 1.
         """.trimIndent()
 
         assertEquals(
-            listOf("len([],0).", "len([H|T],N) :- len(T,M), N = M + 1."),
+            listOf("len([],0).", "len([H|T],N) :- len(T,M), N is M + 1."),
             Parser.splitProgram(program),
         )
     }

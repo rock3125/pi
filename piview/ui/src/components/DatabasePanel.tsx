@@ -139,26 +139,41 @@ export function DatabasePanel({
         )}
       </div>
 
-      {samples.length > 0 && (
-        <div className="samples">
-          <header className="panel__head" style={{ borderBottom: 'none' }}>
-            <h2 className="label">Samples</h2>
-          </header>
-          <div className="samples__list">
-            {samples.map((sample) => (
-              <button
-                key={sample.path}
-                className="chip"
-                onClick={() => onLoadSample(sample)}
-                disabled={busy}
-                title={`Load ${sample.path} into the running database`}
-              >
-                {sample.name}
-              </button>
-            ))}
-          </div>
+      <div className="samples">
+        {samples.length > 0 && (
+          <>
+            <header className="panel__head" style={{ borderBottom: 'none' }}>
+              <h2 className="label">Samples</h2>
+            </header>
+            <div className="samples__list">
+              {samples.map((sample) => (
+                <button
+                  key={sample.path}
+                  className="chip"
+                  onClick={() => onLoadSample(sample)}
+                  disabled={busy}
+                  title={`Load ${sample.path} into the running database`}
+                >
+                  {sample.name}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        <header className="panel__head" style={{ borderBottom: 'none' }}>
+          <h2 className="label">Reference</h2>
+        </header>
+        <div className="samples__list">
+          <a
+            className="chip"
+            href="/iso-prolog.pdf"
+            download
+            title="How ISO Prolog works, with examples - and what pi implements of it"
+          >
+            iso prolog &middot; pdf
+          </a>
         </div>
-      )}
+      </div>
     </section>
   )
 }

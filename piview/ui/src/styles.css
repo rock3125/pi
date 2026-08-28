@@ -636,6 +636,16 @@ button {
   transition: color 0.14s, border-color 0.14s;
 }
 
+/* the reference chip is a download link wearing the same clothes */
+a.chip {
+  text-decoration: none;
+}
+
+a.chip:hover {
+  color: var(--phosphor);
+  border-color: var(--rule-strong);
+}
+
 .chip:hover:not(:disabled) {
   color: var(--phosphor);
   border-color: var(--phosphor-dim);
@@ -1294,9 +1304,9 @@ button {
 
 /* ------------------------------------------------------------------ syntax */
 
-/* JetBrains Mono ligates `!=` into `≠` and `>=` into `≥`.  Handsome, and wrong
-   here: this view shows what is in the database, and pi's operators are the two
-   characters that were typed. */
+/* JetBrains Mono ligates `\=` into a slashed `=` and `>=` into `≥`.  Handsome,
+   and wrong here: this view shows what is in the database, and pi's operators
+   are the characters that were typed. */
 .tok-var,
 .tok-atom,
 .tok-num,

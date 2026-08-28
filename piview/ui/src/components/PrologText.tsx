@@ -20,7 +20,7 @@ const VAR_START = /[A-Z_]/
 const ATOM_START = /[a-z]/
 const WORD = /[A-Za-z0-9_]/
 const DIGIT = /[0-9]/
-const OPERATOR = /[=<>!+\-*/;]/
+const OPERATOR = /[=<>!+\-*/;\\]/
 
 export function tokenise(source: string): Token[] {
   const tokens: Token[] = []

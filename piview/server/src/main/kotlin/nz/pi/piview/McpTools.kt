@@ -36,13 +36,14 @@ object McpTools {
         prompt and in the piview web view, and clauses typed there are visible to
         you.
 
-        PI is not standard prolog. The differences that matter:
-          - `=` both evaluates and unifies. There is no `is`: write `N = M + 1`.
+        PI speaks standard prolog syntax, in a small subset. What there is:
+          - `=` unifies, `is` evaluates: `N is M + 1`, `f(X,b) = f(a,Y)`.
           - There is no assert/1 or retract/1. Use the prolog_assert tool to add a
             clause and prolog_delete to remove one by its listing number.
-          - Comparison is `==`, `!=`, `<`, `<=`, `>`, `>=`.
+          - `==` and `\==` are term identity, `\=` is not-unifiable, and
+            `=:=`, `=\=`, `<`, `=<`, `>`, `>=` compare evaluated arithmetic.
           - Built-ins are write/1 and nl/0 only.
-          - Control: `,` `;` `:-` `!` `not(...)` `fail`.
+          - Control: `,` `;` `:-` `!` `\+` `fail`.
           - Lists are `[a,b,c]`, `[]` and `[H|T]`.
           - A goal is solved to its complete set of solutions in one pass, so a
             query with very many solutions holds them all at once.
@@ -78,13 +79,13 @@ object McpTools {
                 Run a goal against the running pi database and get back every
                 solution. The `?-` prefix and the trailing `.` are added if you
                 leave them off, so `father(fred,X)` and `?- father(fred,X).` are
-                the same request. Remember pi uses `=` where standard prolog uses
-                `is`. Output written by write/1 during the goal is returned
-                separately from the bindings.
+                the same request. `is` evaluates arithmetic and `=` unifies, as
+                in standard prolog. Output written by write/1 during the goal is
+                returned separately from the bindings.
             """.trimIndent(),
             inputSchema = schema(
                 properties = mapOf(
-                    "goal" to stringProp("The goal to solve, e.g. `father(fred,X)` or `X = 3 - 1`"),
+                    "goal" to stringProp("The goal to solve, e.g. `father(fred,X)` or `X is 3 - 1`"),
                 ),
                 required = listOf("goal"),
             ),

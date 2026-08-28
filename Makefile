@@ -63,10 +63,17 @@ docs/c4-model.html: docs/c4-model.md docs/build-html.py
 # the pdf is that same page printed by headless chrome, so the page breaks are
 # decided by the print stylesheet in build-html.py.  Ghostscript sets the title
 # and author afterwards, which chrome does not carry over from the html.
-pdf: docs/c4-model.pdf
+pdf: docs/c4-model.pdf docs/iso-prolog.pdf
 
 docs/c4-model.pdf: docs/c4-model.html docs/build-html.py
 	@python3 docs/build-html.py --pdf
+
+# the ISO prolog primer is authored directly as html (fonts embedded, no
+# network requests) and printed the same way.  This pdf is checked in - it is
+# served by piview as a download - so this only has to be run after editing
+# docs/iso-prolog.html.
+docs/iso-prolog.pdf: docs/iso-prolog.html docs/build-iso-pdf.sh
+	@docs/build-iso-pdf.sh
 
 debug: CXXFLAGS := -std=c++17 $(WARN) -g -O0 -D_DEBUG -pthread
 debug: clean $(TARGET)
