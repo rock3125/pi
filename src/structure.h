@@ -69,7 +69,20 @@ public:
 		ST_CUT,
 		ST_REFERENCE,
 		ST_HEADTAIL,
-		ST_FAIL
+		ST_FAIL,
+
+		//! "is" - evaluate the right hand side and bind the left to its
+		//! value.  ST_ASSIGN is "=", which unifies without evaluating
+		ST_IS,
+
+		//! "==" and "\==" - term identity.  a structural walk that binds
+		//! nothing, where ST_EQUAL ("=:=") evaluates both sides
+		ST_IDENTICAL,
+		ST_NOTIDENTICAL,
+
+		//! "\=" - not unifiable.  attempts the unification and undoes
+		//! whatever it bound, succeeding exactly when the attempt failed
+		ST_NOTUNIFIABLE
 	};
 
 	//! clear my child structures
@@ -83,6 +96,10 @@ public:
 	std::string PrintExpression(Structure* expr);
 
 	size_t					tag;
+
+	//! this node came from a bracketed sub-expression, so the precedence
+	//! rotation in the parser must treat it as a single operand
+	bool					bracketed;
 
 	size_t					name;
 	std::vector<Structure*>	structures;

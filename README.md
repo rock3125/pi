@@ -135,7 +135,9 @@ stays shared, a clause typed at the prompt, one asserted by an agent, and the
 listing in the browser are all the same database.
 
 The view opens light; the button beside *clear database* switches it to a dark
-phosphor ground.
+phosphor ground. The *reference* chip in the left rail downloads
+[an ISO Prolog primer](docs/iso-prolog.pdf) — how the language works, with
+examples, and what pi implements of it.
 
 ```sh
 docker compose up --build        # pi on 7071, piview on http://127.0.0.1:7070
@@ -156,14 +158,13 @@ that installs it under systemd on Ubuntu 24.04, Debian 13 or Fedora 44. See
 
 ## Language
 
-Facts, rules and queries use standard Prolog syntax. A bare `?` is also
-accepted as the query marker.
+Facts, rules and queries use standard Prolog syntax.
 
 ```prolog
 % comments run from % to end of line
 
 father(fred,peter).                  % a fact
-different(X,Y) :- X != Y.            % a rule
+different(X,Y) :- X \= Y.            % a rule
 ?- different(a,b).                   % a query
 ```
 
@@ -173,17 +174,20 @@ quotes: `write('Move top disk from ')`.
 
 | Category | Supported |
 | --- | --- |
-| Control | `,` (and), `;` (or), `:-` (implies), `!` (cut), `not(...)`, `fail` |
-| Comparison | `==`, `!=`, `<`, `<=`, `>`, `>=` |
-| Arithmetic | `=` (evaluate and bind), `+`, `-`, `*`, `/` |
+| Control | `,` (and), `;` (or), `:-` (implies), `!` (cut), `\+` (negation), `fail` |
+| Unification | `=`, `\=` |
+| Comparison | `==`, `\==`, `=:=`, `=\=`, `<`, `=<`, `>`, `>=` |
+| Arithmetic | `is`, `+`, `-`, `*`, `/` |
 | Lists | `[a,b,c]`, `[]`, `[H\|T]` |
 | Built-ins | `write/1`, `nl/0` |
 
-Arithmetic uses `=` where standard Prolog uses `is`:
+`is` evaluates its right hand side; `=` unifies without evaluating:
 
 ```prolog
-?- X = 3 - 1.                % X=2
-?- A = 7 - 2, B = A + 1.     % A=5  B=6
+?- X is 3 - 1.               % X=2
+?- X = 3 - 1.                % X=3-1, the term
+?- f(X,b) = f(a,Y).          % X=a  Y=b
+?- [H|T] = [1,2,3].          % H=1  T=[2,3]
 ```
 
 Values computed in a rule body are visible to the caller, so rules compose in
@@ -191,7 +195,7 @@ the usual way:
 
 ```prolog
 len([],0).
-len([H|T],N) :- len(T,M), N = M + 1.
+len([H|T],N) :- len(T,M), N is M + 1.
 ?- len([a,b,c],N).           % N=3
 ```
 
@@ -259,8 +263,9 @@ keeps printing on the main thread.
 
 ## Notes and limitations
 
-- **`=` is both assignment and unification.** Against a free variable it
-  binds; against an already-bound one it compares. There is no separate `is`.
+- **No exceptions.** Where ISO throws - a type error in arithmetic, an
+  instantiation error on an unbound variable - pi simply fails, or compares
+  what it was given.
 - **No `assert`/`retract`.** The database is changed from the prompt (typing a
   clause, `delete`, `new`) rather than from within a program.
 - **Deep recursion is bounded** by `Query::MAX_PC` (1.5M stack entries), which

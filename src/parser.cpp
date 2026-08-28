@@ -66,6 +66,19 @@ bool PrologParser::IsValidForIdentifier(char ch)
 	return (CanStartIdentifier(ch) || (ch>='0' && ch<='9') || ch=='_');
 };
 
+//! a keyword only counts when the text that follows it cannot be part of
+//! an identifier - otherwise "is" would be found at the front of "island"
+//! and "list" at the front of "listen"
+bool PrologParser::KeywordAt(const char* kw)
+{
+	size_t len=strlen(kw);
+	if (index+len>bufferSize)
+		return false;
+	if (strncmp(&buffer[index],kw,len)!=0)
+		return false;
+	return !IsValidForIdentifier(buffer[index+len]);
+};
+
 PrologParser::PrologParserTokens PrologParser::GetNextToken(void)
 {
 	//! ready to rewind
@@ -96,13 +109,14 @@ PrologParser::PrologParserTokens PrologParser::GetNextToken(void)
 				index++;
 
 				//! "?-" is the standard prolog query marker - take the '-'
-				//! as part of it rather than as a minus sign.  a bare '?'
-				//! is still accepted
+				//! as part of it rather than as a minus sign
 				if (index<bufferSize && buffer[index]=='-')
 				{
 					index++;
+					return tQuestionMark;
 				}
-				return tQuestionMark;
+				SetError("queries start with '?-'");
+				return tEOF;
 			}
 			case '_':
 			{
@@ -153,16 +167,15 @@ PrologParser::PrologParserTokens PrologParser::GetNextToken(void)
 			case '!':
 			{
 				index++;
-				if (buffer[index]!='=')
+
+				//! catch the pre-standard spelling of \= with a pointer at
+				//! the right one rather than a puzzling parse error later
+				if (buffer[index]=='=')
 				{
-					return tCut;
+					SetError("'!=' is not prolog - use '\\=' (or '=\\=' for arithmetic)");
+					return tEOF;
 				}
-				else
-				{
-					index++;
-					return tNotEqual;
-				}
-				break;
+				return tCut;
 			}
 			case ':':
 			{
@@ -249,24 +262,66 @@ PrologParser::PrologParserTokens PrologParser::GetNextToken(void)
 				index++;
 				return tSemiColon;
 			}
+			case '\\':
+			{
+				index++;
+
+				//! "\==" not identical, "\=" not unifiable
+				if (buffer[index]=='=')
+				{
+					index++;
+					if (buffer[index]=='=')
+					{
+						index++;
+						return tNotIdentical;
+					}
+					return tNotUnifiable;
+				}
+
+				//! "\+" - negation as failure
+				if (buffer[index]=='+')
+				{
+					index++;
+					return tUnaryNot;
+				}
+
+				SetError("expected '\\=', '\\==' or '\\+' after '\\'");
+				return tEOF;
+			}
 			case '=':
 			{
 				index++;
-				if (buffer[index]=='<') // for some reason prolog seems to accept =<
+
+				//! "=<" - less or equal
+				if (buffer[index]=='<')
 				{
 					index++;
 					return tLessThan;
 				}
-				else if (buffer[index]!='=')
+
+				//! "=:=" - arithmetic equality
+				if (buffer[index]==':' && buffer[index+1]=='=')
 				{
-					return tAssign;
-				}
-				else
-				{
-					index++;
+					index+=2;
 					return tEqual;
 				}
-				break;
+
+				//! "=\=" - arithmetic inequality
+				if (buffer[index]=='\\' && buffer[index+1]=='=')
+				{
+					index+=2;
+					return tNotEqual;
+				}
+
+				//! "==" - term identity
+				if (buffer[index]=='=')
+				{
+					index++;
+					return tIdentical;
+				}
+
+				//! a lone "=" unifies its two sides
+				return tAssign;
 			}
 			case '>':
 			{
@@ -285,16 +340,14 @@ PrologParser::PrologParserTokens PrologParser::GetNextToken(void)
 			case '<':
 			{
 				index++;
-				if (buffer[index]!='=')
+
+				//! same courtesy for the pre-standard less-or-equal
+				if (buffer[index]=='=')
 				{
-					return tLess;
+					SetError("'<=' is not prolog - use '=<'");
+					return tEOF;
 				}
-				else
-				{
-					index++;
-					return tLessThan;
-				}
-				break;
+				return tLess;
 			}
 		};
 	}
@@ -303,47 +356,38 @@ PrologParser::PrologParserTokens PrologParser::GetNextToken(void)
 	if (index>=bufferSize)
 		return tEOF;
 
-	if (strncmp(&buffer[index],"is",2)==0)
+	//! "is" evaluates its right hand side; "=" (tAssign) unifies.
+	//! there is no "not" keyword - negation is spelled \+
+	if (KeywordAt("is"))
 	{
 		index+=2;
-		return tAssign;
+		return tIs;
 	}
 
-	if (strncmp(&buffer[index],"not",3)==0)
-	{
-		index+=3;
-		return tUnaryNot;
-	}
-
-	if (strncmp(&buffer[index],"true",4)==0)
+	if (KeywordAt("true"))
 	{
 		index+=4;
 		return tTrue;
 	}
-	if (strncmp(&buffer[index],"fail",4)==0)
+	if (KeywordAt("fail"))
 	{
 		index+=4;
 		return tFail;
 	}
-	if (strncmp(&buffer[index],"list",4)==0)
+	if (KeywordAt("list"))
 	{
 		index+=4;
 		return tCommandList;
 	}
-	if (strncmp(&buffer[index],"delete",6)==0)
+	if (KeywordAt("delete"))
 	{
 		index+=6;
 		return tCommandDelete;
 	}
-	if (strncmp(&buffer[index],"false",5)==0)
+	if (KeywordAt("false"))
 	{
 		index+=5;
 		return tFalse;
-	}
-	if (strncmp(&buffer[index],"==",2)==0)
-	{
-		index+=2;
-		return tEqual;
 	}
 
 	// number?
@@ -622,7 +666,7 @@ Structure* PrologParser::ParseQuery(void)
 	token=GetNextToken();
 	if (token!=tQuestionMark)
 	{
-		SetError("query must start with '?'");
+		SetError("query must start with '?-'");
 		return NULL;
 	};
 
@@ -761,17 +805,75 @@ Structure* PrologParser::SubExpr2(void)
 	}
 };
 
+int PrologParser::OperatorPrecedence(size_t tag)
+{
+	switch (tag)
+	{
+		case Structure::ST_TIMES:
+		case Structure::ST_DIVIDE:
+		{
+			return 1;
+		}
+		case Structure::ST_PLUS:
+		case Structure::ST_MINUS:
+		{
+			return 2;
+		}
+		case Structure::ST_ASSIGN:
+		case Structure::ST_IS:
+		case Structure::ST_EQUAL:
+		case Structure::ST_NOTEQUAL:
+		case Structure::ST_IDENTICAL:
+		case Structure::ST_NOTIDENTICAL:
+		case Structure::ST_NOTUNIFIABLE:
+		case Structure::ST_LESS:
+		case Structure::ST_LESSTHAN:
+		case Structure::ST_GREATER:
+		case Structure::ST_GREATERTHAN:
+		{
+			return 3;
+		}
+	}
+	return 0;
+};
+
+Structure* PrologParser::Combine(size_t op,Structure* lhs,Structure* rhs)
+{
+	int mine=OperatorPrecedence(op);
+	int theirs=OperatorPrecedence(rhs->tag);
+
+	//! rotate while the rhs root binds looser than this operator, or
+	//! equally loose among the arithmetic operators, which associate to
+	//! the left: "2 - 3 - 4" is (2 - 3) - 4.  recursion carries the lhs
+	//! down to its proper place: "1 - 2 - 3 - 4" needs it at the bottom
+	if (!rhs->bracketed && theirs>0 &&
+		(theirs>mine || (theirs==mine && mine<3)))
+	{
+		rhs->left=Combine(op,lhs,rhs->left);
+		return rhs;
+	}
+
+	Structure* e=new Structure();
+	e->tag=op;
+	e->left=lhs;
+	e->right=rhs;
+	return e;
+};
+
 bool PrologParser::IsVariableBinaryOperator(PrologParser::PrologParserTokens token)
 {
-	return (token==tEqual || token==tNotEqual || token==tLess || token==tLessThan || 
-			token==tGreater || token==tGreaterThan);
+	return (token==tEqual || token==tNotEqual || token==tIdentical ||
+			token==tNotIdentical || token==tNotUnifiable || token==tLess ||
+			token==tLessThan || token==tGreater || token==tGreaterThan);
 };
 
 bool PrologParser::IsBinaryOperator(PrologParser::PrologParserTokens token)
 {
-	return (token==tEqual || token==tNotEqual || token==tLess || token==tLessThan || 
-			token==tGreater || token==tGreaterThan || token==tAssign || token==tPlus || 
-			token==tMinus || token==tDivide || token==tTimes);
+	return (token==tEqual || token==tNotEqual || token==tIdentical ||
+			token==tNotIdentical || token==tNotUnifiable || token==tLess ||
+			token==tLessThan || token==tGreater || token==tGreaterThan ||
+			token==tAssign || token==tIs || token==tPlus || token==tMinus ||
+			token==tDivide || token==tTimes);
 };
 
 size_t PrologParser::TokenToOperator(PrologParser::PrologParserTokens t)
@@ -797,6 +899,22 @@ size_t PrologParser::TokenToOperator(PrologParser::PrologParserTokens t)
 		case tAssign:
 		{
 			return Structure::ST_ASSIGN;
+		}
+		case tIs:
+		{
+			return Structure::ST_IS;
+		}
+		case tIdentical:
+		{
+			return Structure::ST_IDENTICAL;
+		}
+		case tNotIdentical:
+		{
+			return Structure::ST_NOTIDENTICAL;
+		}
+		case tNotUnifiable:
+		{
+			return Structure::ST_NOTUNIFIABLE;
 		}
 		case tEqual:
 		{
@@ -874,17 +992,7 @@ Structure* PrologParser::Expression(void)
 				Structure* s2=Expression();
 				if (error) { safe_delete(s1); return NULL; }
 
-				Structure* e=new Structure();
-				e->tag=TokenToOperator(op);
-				e->left=s1;
-				e->right=s2;
-
-				if (e->tag==Structure::ST_ASSIGN && s1->tag!=Structure::ST_VAR)
-				{
-					SetError("lhs in an assignment must be an l-value");
-					safe_delete(e);
-					return NULL;
-				}
+				Structure* e=Combine(TokenToOperator(op),s1,s2);
 
 				token=GetNextToken();
 				if (token!=tRight)
@@ -905,25 +1013,17 @@ Structure* PrologParser::Expression(void)
 		}
 
 		token=GetNextToken();
+
+		//! whatever the brackets held is one operand from here on
+		s1->bracketed=true;
+
 		if (IsBinaryOperator(token))
 		{
 			PrologParserTokens op=token;
 			Structure* s2=Expression();
 			if (error) { safe_delete(s1); return NULL; }
 
-			Structure* e=new Structure();
-			e->tag=TokenToOperator(op);
-			e->left=s1;
-			e->right=s2;
-
-			if (e->tag==Structure::ST_ASSIGN && s1->tag!=Structure::ST_VAR)
-			{
-				SetError("lhs in an assignment must be an l-value");
-				safe_delete(e);
-				return NULL;
-			}
-
-			return e;
+			return Combine(TokenToOperator(op),s1,s2);
 		}
 		else
 		{
@@ -946,23 +1046,30 @@ Structure* PrologParser::Expression(void)
 	else if (token==tUnaryNot)
 	{
 		token=GetNextToken();
-		if (token!=tLeft)
-		{
-			SetError("not must be followed by '('");
-			return NULL;
-		}
-		Structure* e=Expression();
-		if (error) { return NULL; }
 
-		//! Expression() stops before the closing bracket - it has to be
-		//! fetched before it can be checked (as the '(' expression ')'
-		//! case above does)
-		token=GetNextToken();
-		if (token!=tRight)
+		//! the negated goal may be bracketed - \+(goal) - or bare - \+ goal
+		Structure* e;
+		if (token==tLeft)
 		{
-			SetError("')' missing on not()");
-			safe_delete(e);
-			return NULL;
+			e=Expression();
+			if (error) { return NULL; }
+
+			//! Expression() stops before the closing bracket - it has to be
+			//! fetched before it can be checked (as the '(' expression ')'
+			//! case above does)
+			token=GetNextToken();
+			if (token!=tRight)
+			{
+				SetError("')' missing on \\+()");
+				safe_delete(e);
+				return NULL;
+			}
+		}
+		else
+		{
+			UngetToken();
+			e=Expression();
+			if (error) { return NULL; }
 		}
 
 		Structure* s=new Structure();
@@ -1002,28 +1109,22 @@ Structure* PrologParser::Expression(void)
 			Structure* s2=Expression();
 			if (error) { safe_delete(s1); return NULL; }
 
-			if (negated && s2->tag==Structure::ST_INT)
+			if (negated)
 			{
-				s2->i=-s2->i;
-			}
-			else if (negated && s2->tag==Structure::ST_FLOAT)
-			{
-				s2->f=-s2->f;
-			}
-
-			Structure* e=new Structure();
-			e->tag=TokenToOperator(op);
-			e->left=s1;
-			e->right=s2;
-
-			if (e->tag==Structure::ST_ASSIGN && s1->tag!=Structure::ST_VAR)
-			{
-				SetError("lhs in an assignment must be an l-value");
-				safe_delete(e);
-				return NULL;
+				//! the lexer read "- 5" as the literal -5 and the minus was
+				//! re-synthesised above, so the sign is carried twice.  the
+				//! literal is the leftmost leaf of whatever s2 parsed into -
+				//! in "3 - 5 + 2" it sits at the bottom left of (-5) + 2
+				Structure* leaf=s2;
+				while (OperatorPrecedence(leaf->tag)>0 && !leaf->bracketed)
+					leaf=leaf->left;
+				if (leaf->tag==Structure::ST_INT)
+					leaf->i=-leaf->i;
+				else if (leaf->tag==Structure::ST_FLOAT)
+					leaf->f=-leaf->f;
 			}
 
-			return e;
+			return Combine(TokenToOperator(op),s1,s2);
 		}
 		else
 		{

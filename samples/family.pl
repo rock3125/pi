@@ -7,7 +7,7 @@ mother(anne,mark).
 mother(frieda,micheal).
 mother(frieda,jj).
 
-different(X,Y) :- X!=Y.
+different(X,Y) :- X \= Y.
 
 %brother(X,Y) :- father(Z,X), father (Z,Y), mother(K,X), mother(K,Y), different(X,Y).
 

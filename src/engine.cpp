@@ -281,7 +281,7 @@ std::string Engine::PrettyPrint(int i)
 		{
 			int index=i+1;
 			str=str+Engine::PrettyPrint(index);
-			str=str+"==";
+			str=str+"=:=";
 			index+=SizeOfClause(index);
 			str=str+Engine::PrettyPrint(index);
 			break;
@@ -290,7 +290,34 @@ std::string Engine::PrettyPrint(int i)
 		{
 			int index=i+1;
 			str=str+Engine::PrettyPrint(index);
-			str=str+"!=";
+			str=str+"=\\=";
+			index+=SizeOfClause(index);
+			str=str+Engine::PrettyPrint(index);
+			break;
+		};
+		case Structure::ST_IDENTICAL:
+		{
+			int index=i+1;
+			str=str+Engine::PrettyPrint(index);
+			str=str+"==";
+			index+=SizeOfClause(index);
+			str=str+Engine::PrettyPrint(index);
+			break;
+		};
+		case Structure::ST_NOTIDENTICAL:
+		{
+			int index=i+1;
+			str=str+Engine::PrettyPrint(index);
+			str=str+"\\==";
+			index+=SizeOfClause(index);
+			str=str+Engine::PrettyPrint(index);
+			break;
+		};
+		case Structure::ST_NOTUNIFIABLE:
+		{
+			int index=i+1;
+			str=str+Engine::PrettyPrint(index);
+			str=str+"\\=";
 			index+=SizeOfClause(index);
 			str=str+Engine::PrettyPrint(index);
 			break;
@@ -323,7 +350,7 @@ std::string Engine::PrettyPrint(int i)
 		{
 			int index=i+1;
 			str=str+Engine::PrettyPrint(index);
-			str=str+"<=";
+			str=str+"=<";
 			index+=SizeOfClause(index);
 			str=str+Engine::PrettyPrint(index);
 			break;
@@ -355,6 +382,15 @@ std::string Engine::PrettyPrint(int i)
 			str=str+Engine::PrettyPrint(index);
 			break;
 		};
+		case Structure::ST_IS:
+		{
+			int index=i+1;
+			str=str+Engine::PrettyPrint(index);
+			str=str+" is ";
+			index+=SizeOfClause(index);
+			str=str+Engine::PrettyPrint(index);
+			break;
+		};
 		case Structure::ST_PLUS:
 		{
 			int index=i+1;
@@ -377,7 +413,7 @@ std::string Engine::PrettyPrint(int i)
 		{
 			int index=i+1;
 			str=str+Engine::PrettyPrint(index);
-			str=str+"\\";
+			str=str+"/";
 			index+=SizeOfClause(index);
 			str=str+Engine::PrettyPrint(index);
 			break;
@@ -487,7 +523,22 @@ std::string Engine::PrintStackItem(int i)
 		};
 		case Structure::ST_EQUAL:
 		{
+			str=str+"=:=";
+			break;
+		};
+		case Structure::ST_IDENTICAL:
+		{
 			str=str+"==";
+			break;
+		};
+		case Structure::ST_NOTIDENTICAL:
+		{
+			str=str+"\\==";
+			break;
+		};
+		case Structure::ST_NOTUNIFIABLE:
+		{
+			str=str+"\\=";
 			break;
 		};
 		case Structure::ST_CUT:
@@ -502,7 +553,7 @@ std::string Engine::PrintStackItem(int i)
 		};
 		case Structure::ST_NOTEQUAL:
 		{
-			str=str+"!=";
+			str=str+"=\\=";
 			break;
 		};
 		case Structure::ST_LESS:
@@ -512,7 +563,7 @@ std::string Engine::PrintStackItem(int i)
 		};
 		case Structure::ST_LESSTHAN:
 		{
-			str=str+"<=";
+			str=str+"=<";
 			break;
 		};
 		case Structure::ST_GREATER:
@@ -530,9 +581,14 @@ std::string Engine::PrintStackItem(int i)
 			str=str+"=";
 			break;
 		};
+		case Structure::ST_IS:
+		{
+			str=str+"is";
+			break;
+		};
 		case Structure::ST_NOT:
 		{
-			str=str+"not()";
+			str=str+"\\+()";
 			break;
 		};
 		case Structure::ST_PLUS:
@@ -547,7 +603,7 @@ std::string Engine::PrintStackItem(int i)
 		};
 		case Structure::ST_DIVIDE:
 		{
-			str=str+"\\";
+			str=str+"/";
 			break;
 		};
 		case Structure::ST_MINUS:
@@ -1329,11 +1385,15 @@ bool Engine::ForwardUnify(int level,int target,int parent,size_t& numUnification
 
 			case Structure::ST_EQUAL:
 			case Structure::ST_NOTEQUAL:
+			case Structure::ST_IDENTICAL:
+			case Structure::ST_NOTIDENTICAL:
+			case Structure::ST_NOTUNIFIABLE:
 			case Structure::ST_LESS:
 			case Structure::ST_LESSTHAN:
 			case Structure::ST_GREATER:
 			case Structure::ST_GREATERTHAN:
 			case Structure::ST_ASSIGN:
+			case Structure::ST_IS:
 			case Structure::ST_PLUS:
 			case Structure::ST_TIMES:
 			case Structure::ST_DIVIDE:
@@ -1543,11 +1603,15 @@ bool Engine::CreateBindingsRecursive(int level,int target,int parent,BindingList
 			}
 			case Structure::ST_EQUAL:
 			case Structure::ST_NOTEQUAL:
+			case Structure::ST_IDENTICAL:
+			case Structure::ST_NOTIDENTICAL:
+			case Structure::ST_NOTUNIFIABLE:
 			case Structure::ST_LESS:
 			case Structure::ST_LESSTHAN:
 			case Structure::ST_GREATER:
 			case Structure::ST_GREATERTHAN:
 			case Structure::ST_ASSIGN:
+			case Structure::ST_IS:
 			case Structure::ST_PLUS:
 			case Structure::ST_TIMES:
 			case Structure::ST_DIVIDE:
@@ -1674,8 +1738,12 @@ void Engine::GatherVars(int index,std::vector<int>& vars)
 		//! variable the caller wants reported.  without these a query like
 		//! "?X = 3 - 1." gathers no variables at all and answers a bare "yes"
 		case Structure::ST_ASSIGN:
+		case Structure::ST_IS:
 		case Structure::ST_EQUAL:
 		case Structure::ST_NOTEQUAL:
+		case Structure::ST_IDENTICAL:
+		case Structure::ST_NOTIDENTICAL:
+		case Structure::ST_NOTUNIFIABLE:
 		case Structure::ST_LESS:
 		case Structure::ST_LESSTHAN:
 		case Structure::ST_GREATER:

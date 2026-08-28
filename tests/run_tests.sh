@@ -63,10 +63,10 @@ check "query marker ?- with space" samples/family.pl \
 	'?- father(fred,peter).' 'yes'
 check "query marker ?- no space" samples/family.pl \
 	'?-father(fred,peter).' 'yes'
-check "bare ? still accepted" samples/family.pl \
-	'?father(fred,peter).' 'yes'
-check "minus still parses after ?-" - '?- X = 3 - 1.' 'X=2'
-check "negative literal after ?-" - '?- X = 0 - 5.' 'X=-5'
+check "bare ? rejected" samples/family.pl \
+	'?father(fred,peter).' 'error parsing query: query must start with '"'"'?-'"'"' (line 1, character 2)'
+check "minus still parses after ?-" - '?- X is 3 - 1.' 'X=2'
+check "negative literal after ?-" - '?- X is 0 - 5.' 'X=-5'
 check "query must end with a full stop" samples/family.pl \
 	'?- father(fred,X)' 'error parsing query: query must end with '"'"'.'"'"' (line 1, character 18)'
 
@@ -83,8 +83,8 @@ check "fact lookup, other direction" samples/family.pl \
 check "ground fact true" samples/family.pl '?- father(fred,peter).' 'yes'
 check "ground fact false" samples/family.pl '?- father(fred,zoe).' 'no'
 
-check "rule with !=" samples/family.pl '?- different(a,b).' 'yes'
-check "rule with != fails" samples/family.pl '?- different(a,a).' 'no'
+check "rule with \=" samples/family.pl '?- different(a,b).' 'yes'
+check "rule with \= fails" samples/family.pl '?- different(a,a).' 'no'
 
 check "two-var rule" samples/family.pl '?- half(peter,X).' 'X=micheal|X=jj'
 check "two-var rule, other" samples/family.pl '?- half(micheal,X).' 'X=peter|X=mark'
@@ -135,31 +135,47 @@ p([a],one).
 ?- p([b],N).' 'no'
 check "recursion over lists, clauses ahead" - 'x(a).
 len([],0).
-len([H|T],N) :- len(T,M), N = M + 1.
+len([H|T],N) :- len(T,M), N is M + 1.
 ?- len([a,b,c],N).' 'N=3'
 check "recursion over lists, after a whole program" - 'father(fred,peter).
 mother(anne,peter).
-different(X,Y) :- X != Y.
+different(X,Y) :- X \= Y.
 len([],0).
-len([H|T],N) :- len(T,M), N = M + 1.
+len([H|T],N) :- len(T,M), N is M + 1.
 ?- len([a,b,c,d],N).' 'N=4'
 
 ######################################################################
-# arithmetic and assignment
+# arithmetic - "is" evaluates, "=" does not
 ######################################################################
 
-check "assign minus" - '?- X = 3 - 1.' 'X=2'
-check "assign times" - '?- A = 2 * 3.' 'A=6'
-check "assign plus" - '?- A = 2 + 3.' 'A=5'
-check "chained assign" - '?- B = 7 - 2, C = B + 1.' 'B=5|C=6'
-check "assign then match" - 'p(1).
+check "is minus" - '?- X is 3 - 1.' 'X=2'
+check "is times" - '?- A is 2 * 3.' 'A=6'
+check "is plus" - '?- A is 2 + 3.' 'A=5'
+check "is divide" - '?- A is 10 / 2.' 'A=5'
+check "chained is" - '?- B is 7 - 2, C is B + 1.' 'B=5|C=6'
+check "ground is checks" - '?- 3 is 1 + 2.' 'yes'
+check "ground is fails" - '?- 4 is 1 + 2.' 'no'
+check "is then match" - 'p(1).
 p(2).
-?- Y = 2, p(Y).' 'Y=2'
-check "assign then fail to match" - 'p(1).
+?- Y is 2, p(Y).' 'Y=2'
+check "is then fail to match" - 'p(1).
 p(2).
-?- Z = 5 - 1, p(Z).' 'no'
-check "assign from fact" - 'p(5).
-?- p(M), N = M + 1.' 'M=5|N=6'
+?- Z is 5 - 1, p(Z).' 'no'
+check "is from fact" - 'p(5).
+?- p(M), N is M + 1.' 'M=5|N=6'
+
+######################################################################
+# unification - "=" binds without evaluating
+######################################################################
+
+check "= does not evaluate" - '?- X = 3 - 1.' 'X=3-1'
+check "= binds an atom" - '?- X = fred.' 'X=fred'
+check "= on equal atoms" - '?- fred = fred.' 'yes'
+check "= on different atoms" - '?- fred = mary.' 'no'
+check "= unifies structures" - '?- f(X,b) = f(a,Y).' 'X=a|Y=b'
+check "= destructures a list" - '?- [H|T] = [1,2,3].' 'H=1|T=[2 ,3 ]'
+check "= on empty lists" - '?- [] = [].' 'yes'
+check "= empty list has no head" - '?- [H|T] = [].' 'no'
 
 ######################################################################
 # comparisons
@@ -167,9 +183,50 @@ check "assign from fact" - 'p(5).
 
 check "greater true"  - '?- 3 > 2.' 'yes'
 check "greater false" - '?- 2 > 3.' 'no'
-check "equal true"    - '?- 2 == 2.' 'yes'
-check "notequal true" - '?- 2 != 3.' 'yes'
-check "lessthan true" - '?- 2 <= 2.' 'yes'
+check "lessthan true" - '?- 2 =< 2.' 'yes'
+check "arith equal" - '?- 2 =:= 2.' 'yes'
+check "arith equal evaluates" - '?- 1 + 1 =:= 2.' 'yes'
+check "arith notequal" - '?- 2 =\= 3.' 'yes'
+check "arith notequal evaluates" - '?- 2 * 3 =\= 5.' 'yes'
+
+######################################################################
+# operator precedence - * and / bind before + and -, all before =:=
+######################################################################
+
+check "times before plus" - '?- X is 2 + 3 * 4.' 'X=14'
+check "times before plus, other side" - '?- X is 2 * 3 + 4.' 'X=10'
+check "minus associates left" - '?- X is 10 - 3 - 4.' 'X=3'
+check "brackets override" - '?- X is (2 + 3) * 4.' 'X=20'
+
+######################################################################
+# term identity - == compares structure and binds nothing
+######################################################################
+
+check "identical numbers" - '?- 2 == 2.' 'yes'
+check "identity does not evaluate" - '?- 1 + 1 == 2.' 'no'
+check "int and float differ" - '?- 2 == 2.0.' 'no'
+check "identical after binding" - '?- X = a, X == a.' 'X=a'
+check "distinct free vars differ" - '?- X == Y.' 'no'
+check "same var is identical" - '?- f(X) == f(X).' 'yes'
+check "not identical" - '?- f(a) \== f(b).' 'yes'
+
+######################################################################
+# \= is not-unifiable - it tries the unification and takes it back
+######################################################################
+
+check "notequal true" - '?- 2 \= 3.' 'yes'
+check "free var unifies with anything" - '?- X \= a.' 'no'
+check "different functors" - '?- f(X) \= g(a).' 'yes'
+check "failed attempt is undone" - '?- f(X,g(Y)) \= f(a,b), X = c.' 'X=c'
+
+######################################################################
+# the pre-standard spellings are gone, with a pointer at the right one
+######################################################################
+
+check "!= rejected" - '?- 2 != 3.' \
+	'error parsing query: '"'"'!='"'"' is not prolog - use '"'"'\='"'"' (or '"'"'=\='"'"' for arithmetic) (line 1, character 7)'
+check "<= rejected" - '?- 2 <= 3.' \
+	'error parsing query: '"'"'<='"'"' is not prolog - use '"'"'=<'"'"' (line 1, character 7)'
 
 ######################################################################
 # towers of hanoi - move counts must be 2^n - 1
@@ -187,7 +244,7 @@ count "hanoi 6 disks" samples/towers_of_hanoi.pl '?- move(6,left,right,centre).'
 ######################################################################
 
 check "head var from arithmetic" - 'p(5).
-t(N) :- p(M), N = M + 1.
+t(N) :- p(M), N is M + 1.
 ?- t(X).' 'X=6'
 
 check "head var passthrough" - 'p(5).
@@ -195,28 +252,30 @@ t(N) :- p(N).
 ?- t(X).' 'X=5'
 
 check "head var two levels" - 'p(2).
-t(N) :- p(M), N = M + 1.
-u(N) :- t(M), N = M + 1.
+t(N) :- p(M), N is M + 1.
+u(N) :- t(M), N is M + 1.
 ?- u(X).' 'X=4'
 
 check "list length" - 'len([],0).
-len([H|T],N) :- len(T,M), N = M + 1.
+len([H|T],N) :- len(T,M), N is M + 1.
 ?- len([a,b,c],N).' 'N=3'
 
 ######################################################################
 # not/1
 ######################################################################
 
-check "not on false goal" - 'q(a).
-?- not(q(z)).' 'yes'
-check "not on true goal" - 'q(a).
-?- not(q(a)).' 'no'
-check "not in rule body" - 'q(a).
+check "negation of false goal" - 'q(a).
+?- \+ q(z).' 'yes'
+check "negation of true goal" - 'q(a).
+?- \+ q(a).' 'no'
+check "bracketed negation" - 'q(a).
+?- \+(q(a)).' 'no'
+check "negation in rule body" - 'q(a).
 q(b).
-s(X) :- not(q(X)).
+s(X) :- \+ q(X).
 ?- s(z).' 'yes'
-check "not in rule body, fails" - 'q(a).
-s(X) :- not(q(X)).
+check "negation in rule body, fails" - 'q(a).
+s(X) :- \+ q(X).
 ?- s(a).' 'no'
 
 ######################################################################

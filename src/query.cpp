@@ -105,6 +105,30 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 			}
 			return false;
 		}
+		case Structure::ST_IDENTICAL:
+		case Structure::ST_NOTIDENTICAL:
+		{
+			//! "==" walks both terms structurally and binds nothing, which
+			//! is what separates it from "=:=" (evaluates) and "=" (binds)
+			int lhs=pc+1;
+			bool same=Identical(lhs,lhs+SizeOfClause(lhs));
+			return (n->type==Structure::ST_IDENTICAL) ? same : !same;
+		}
+		case Structure::ST_NOTUNIFIABLE:
+		{
+			//! "\=" - try the unification for real, then take back every
+			//! variable it managed to bind.  the attempt may get part way
+			//! before failing, so the undo runs whichever way it went
+			int lhs=pc+1;
+			BindingList b;
+			bool unifies=Unify(lhs,lhs+SizeOfClause(lhs),b);
+
+			for (size_t i=0; i<b.size(); i++)
+			{
+				Engine::GetStack()[b[i]->lhs]->fu=-1;
+			}
+			return !unifies;
+		}
 		case Structure::ST_IMPLIES:
 		{
 			size_t size1=SizeOfClause(pc+1);
@@ -537,14 +561,32 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 		}
 		case Structure::ST_ASSIGN:
 		{
-			PreCond(Engine::GetStack(pc+1)->type==Structure::ST_VAR);
+			//! "=" unifies its two sides and evaluates neither of them, so
+			//! "X = 3 - 1" binds X to the term 3-1.  "is" below is the one
+			//! that does arithmetic
+			int lhs=pc+1;
+			int rhs=lhs+SizeOfClause(lhs);
 
+			BindingList b;
+			if (!Unify(lhs,rhs,b))
+				return false;
+
+			//! a unification that instantiated nothing - "a = a" - still
+			//! succeeds, it just has no solution to publish
+			if (!b.empty())
+				bindings.push_back(b);
+
+			Trace2(level,"UNIFY :%s",Engine::PrettyPrint(pc).c_str());
+			return true;
+		}
+		case Structure::ST_IS:
+		{
 			// resolve the target down its forward chain before touching it.
 			// ForwardBind links every later occurrence of a variable to the
 			// first, and ForwardUnify links a rule's head variable to the
 			// caller's - so the node at the end of the chain is the one that
 			// has to receive the value.  writing to this occurrence instead
-			// would break that chain, and "t(N) :- p(M), N = M + 1." would
+			// would break that chain, and "t(N) :- p(M), N is M + 1." would
 			// compute the right answer and then throw it away.
 			int lhsIndex=Engine::GetForwardValue(pc+1);
 			Node* lhs=Engine::GetStack(lhsIndex);
@@ -554,7 +596,7 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 			// separate stack node, so the assignment is also handed back as a
 			// binding - that is what the enclosing AND uses to substitute the
 			// remaining occurrences (see the ST_REFERENCE substitution above).
-			// without it "M = N - 1, move(M,..)" would call move/4 with M
+			// without it "M is N - 1, move(M,..)" would call move/4 with M
 			// still unbound.
 			int valueIndex;
 
@@ -584,7 +626,8 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 			}
 
 			// the chain may already end on a value rather than a free
-			// variable - "=" is then a comparison, not an assignment
+			// variable - "is" is then a comparison, not an assignment.
+			// a literal left hand side, as in "3 is 1 + 2", lands here too
 			if (lhs->type!=Structure::ST_VAR)
 			{
 				return Engine::Equivalent(lhsIndex,valueIndex);
@@ -596,7 +639,7 @@ bool Query::Execute(int level,int pc,Set& bindings,bool& cut)
 			b.push_back(Engine::NewBinding(lhsIndex,valueIndex));
 			bindings.push_back(b);
 
-			Trace2(level,"ASSIGN :%s",Engine::PrettyPrint(pc).c_str());
+			Trace2(level,"IS :%s",Engine::PrettyPrint(pc).c_str());
 			return true;
 		}
 		default:
@@ -620,6 +663,390 @@ bool Query::ExecuteQuery(void)
 			Engine::AddToOutputString("yes");
 
 		return true;
+	}
+	return false;
+};
+
+//! the number of stack slots a term occupies where it sits.  a slot the
+//! enclosing AND replaced with an ST_REFERENCE stands for the one variable
+//! that was there, whatever the size of the value it points at - so its
+//! size has to be read off the slot itself and not off its target
+static int RawSize(int index)
+{
+	Node* n=Engine::GetStack()[index];
+	if (n->type==Structure::ST_REFERENCE)
+		return 1;
+	return n->size;
+};
+
+//! resolve an index to the slot that really holds the value: through the
+//! reference substitutions the AND puts on the stack, and then along the
+//! forward chain of variables that have been instantiated.
+//!
+//! Engine::GetForwardValue() follows the chain but stops on the reference
+//! slot itself, and those slots are put back when the AND is done - a
+//! binding pointing at one would go stale the moment it was published
+static int ResolveIndex(int index)
+{
+	for (;;)
+	{
+		Node* n=Engine::GetStack()[index];
+		if (n->type==Structure::ST_REFERENCE)
+		{
+			index=n->fu;
+			continue;
+		}
+		if (n->type==Structure::ST_VAR && Valid(n->fu))
+		{
+			index=n->fu;
+			continue;
+		}
+		return index;
+	}
+};
+
+int Query::CopyTerm(int index)
+{
+	Node* src=Engine::GetStack()[index];
+
+	//! a reference slot is a variable standing in for a value elsewhere on
+	//! the stack.  copy it as a variable pointing at the same place - the
+	//! reference itself is put back when the AND finishes
+	if (src->type==Structure::ST_REFERENCE)
+	{
+		Node* n=new Node();
+		n->type=Structure::ST_VAR;
+		n->size=1;
+		n->fu=src->fu;
+		Engine::AddToStack(n);
+		return 1;
+	}
+
+	Node* n=new Node(*src);
+
+	//! parent and next are absolute stack references belonging to the
+	//! original - a copied term is a value, it is not being solved
+	n->parent=-1;
+	n->next=-1;
+
+	//! a free variable is copied as a forward link to the original.
+	//! resolving the copy therefore arrives at the original variable, and
+	//! unifying against the copy binds the one the caller can still see
+	if (src->type==Structure::ST_VAR && !Valid(src->fu))
+		n->fu=index;
+
+	Engine::AddToStack(n);
+
+	//! then the rest of the subtree, slot by slot, so that a reference
+	//! sitting inside it is caught by the case above
+	int size=src->size;
+	int copied=1;
+	int at=index+1;
+	while (copied<size)
+	{
+		copied+=CopyTerm(at);
+		at+=RawSize(at);
+	}
+	return size;
+};
+
+int Query::ListTail(int listIndex)
+{
+	Node* list=Engine::GetStack(listIndex);
+	PreCond(list->type==Structure::ST_LIST);
+
+	//! walk past the head to the first element of the tail
+	int first=listIndex+1;
+	int index=first+RawSize(first);
+
+	Node* n=new Node();
+	n->type=Structure::ST_LIST;
+	n->arity=list->arity-1;
+	n->size=1;
+
+	int at=int(Engine::GetStackSize());
+	Engine::AddToStack(n);
+
+	for (size_t i=1; i<list->arity; i++)
+	{
+		int size=CopyTerm(index);
+		n->size+=size;
+		index+=RawSize(index);
+	}
+	return at;
+};
+
+bool Query::UnifyLists(int a,int b,BindingList& bindings)
+{
+	Node* na=Engine::GetStack(a);
+	Node* nb=Engine::GetStack(b);
+
+	//! [H|T] on the right, a plain list on the left - do it the other way
+	//! round so there is only one destructuring case to write
+	if (na->type==Structure::ST_LIST && nb->type==Structure::ST_HEADTAIL)
+	{
+		return UnifyLists(b,a,bindings);
+	}
+
+	//! [H1|T1] = [H2|T2]
+	if (na->type==Structure::ST_HEADTAIL && nb->type==Structure::ST_HEADTAIL)
+	{
+		int head1=a+1;
+		int head2=b+1;
+		if (!Unify(head1,head2,bindings))
+			return false;
+		return Unify(head1+RawSize(head1),head2+RawSize(head2),bindings);
+	}
+
+	//! [H|T] = [a,b,c] - H takes the first element, T the rest.  the
+	//! empty list has no head, so it never matches a [H|T] pattern
+	if (na->type==Structure::ST_HEADTAIL && nb->type==Structure::ST_LIST)
+	{
+		if (nb->arity==0)
+			return false;
+
+		int head=a+1;
+		if (!Unify(head,b+1,bindings))
+			return false;
+
+		return Unify(head+RawSize(head),ListTail(b),bindings);
+	}
+
+	//! [a,b,c] = [a,b,c] - same length, element by element
+	if (na->type==Structure::ST_LIST && nb->type==Structure::ST_LIST)
+	{
+		if (na->arity!=nb->arity)
+			return false;
+
+		int index1=a+1;
+		int index2=b+1;
+		for (size_t i=0; i<na->arity; i++)
+		{
+			if (!Unify(index1,index2,bindings))
+				return false;
+			index1+=RawSize(index1);
+			index2+=RawSize(index2);
+		}
+		return true;
+	}
+
+	return false;
+};
+
+bool Query::IdenticalToListTail(int headTail,int list,size_t from)
+{
+	//! compare [H|T] against the elements of list from position "from":
+	//! H against element "from", then T against the rest
+	Node* ln=Engine::GetStack(list);
+	if (from>=ln->arity)
+		return false;
+
+	//! step to element "from"
+	int elem=list+1;
+	for (size_t i=0; i<from; i++)
+		elem+=RawSize(elem);
+
+	int head=headTail+1;
+	if (!Identical(head,elem))
+		return false;
+
+	int tail=ResolveIndex(head+RawSize(head));
+	Node* tn=Engine::GetStack()[tail];
+
+	//! a free tail is not identical to anything concrete
+	if (tn->type==Structure::ST_VAR)
+		return false;
+
+	if (tn->type==Structure::ST_HEADTAIL)
+		return IdenticalToListTail(tail,list,from+1);
+
+	if (tn->type==Structure::ST_LIST)
+	{
+		//! the tail must hold exactly the remaining elements
+		if (tn->arity!=ln->arity-(from+1))
+			return false;
+		int index1=tail+1;
+		int index2=elem+RawSize(elem);
+		for (size_t i=0; i<tn->arity; i++)
+		{
+			if (!Identical(index1,index2))
+				return false;
+			index1+=RawSize(index1);
+			index2+=RawSize(index2);
+		}
+		return true;
+	}
+	return false;
+};
+
+bool Query::Identical(int a,int b)
+{
+	a=ResolveIndex(a);
+	b=ResolveIndex(b);
+
+	//! the same slot is the same term - and it is the only way two free
+	//! variables are ever identical, since occurrences of one variable in
+	//! a clause all resolve to its first occurrence
+	if (a==b)
+		return true;
+
+	Node* na=Engine::GetStack()[a];
+	Node* nb=Engine::GetStack()[b];
+
+	//! a bound [H|T] pattern and a plain list can spell the same term
+	if (na->type==Structure::ST_HEADTAIL && nb->type==Structure::ST_LIST)
+		return IdenticalToListTail(a,b,0);
+	if (na->type==Structure::ST_LIST && nb->type==Structure::ST_HEADTAIL)
+		return IdenticalToListTail(b,a,0);
+
+	if (na->type!=nb->type)
+		return false;
+
+	switch (na->type)
+	{
+		case Structure::ST_VAR:
+		{
+			//! a variable's scope is its clause, so two free occurrences
+			//! with the same name are the same variable - occurrences are
+			//! separate stack nodes and not always chained together.  the
+			//! anonymous variable (name 0) is a fresh variable every time
+			return na->name==nb->name && na->name!=0;
+		}
+		case Structure::ST_INT:
+		{
+			return na->i==nb->i;
+		}
+		case Structure::ST_FLOAT:
+		{
+			return na->f==nb->f;
+		}
+		case Structure::ST_BOOL:
+		{
+			return na->b==nb->b;
+		}
+		case Structure::ST_STRING:
+		{
+			return na->name==nb->name;
+		}
+		case Structure::ST_STRUCTURE:
+		{
+			if (na->name!=nb->name || na->arity!=nb->arity)
+				return false;
+
+			int index1=a+1;
+			int index2=b+1;
+			for (size_t i=0; i<na->arity; i++)
+			{
+				if (!Identical(index1,index2))
+					return false;
+				index1+=RawSize(index1);
+				index2+=RawSize(index2);
+			}
+			return true;
+		}
+		case Structure::ST_LIST:
+		{
+			if (na->arity!=nb->arity)
+				return false;
+
+			int index1=a+1;
+			int index2=b+1;
+			for (size_t i=0; i<na->arity; i++)
+			{
+				if (!Identical(index1,index2))
+					return false;
+				index1+=RawSize(index1);
+				index2+=RawSize(index2);
+			}
+			return true;
+		}
+		case Structure::ST_HEADTAIL:
+		{
+			int head1=a+1;
+			int head2=b+1;
+			if (!Identical(head1,head2))
+				return false;
+			return Identical(head1+RawSize(head1),head2+RawSize(head2));
+		}
+	}
+	return false;
+};
+
+bool Query::Unify(int a,int b,BindingList& bindings)
+{
+	//! both sides may be variables that already have a value, or slots
+	//! the enclosing AND is standing in for
+	a=ResolveIndex(a);
+	b=ResolveIndex(b);
+
+	if (a==b)
+		return true;
+
+	Node* na=Engine::GetStack(a);
+	Node* nb=Engine::GetStack(b);
+
+	//! ResolveIndex() stops on a value or on a free variable, so a
+	//! variable here is one that has not been instantiated yet.  it takes
+	//! the shape of the other side, and that is published as a binding -
+	//! the enclosing AND needs it to substitute the goals that follow
+	if (na->type==Structure::ST_VAR)
+	{
+		na->fu=b;
+		bindings.push_back(Engine::NewBinding(a,b));
+		return true;
+	}
+	if (nb->type==Structure::ST_VAR)
+	{
+		nb->fu=a;
+		bindings.push_back(Engine::NewBinding(b,a));
+		return true;
+	}
+
+	if (na->type==Structure::ST_LIST || na->type==Structure::ST_HEADTAIL ||
+		nb->type==Structure::ST_LIST || nb->type==Structure::ST_HEADTAIL)
+	{
+		return UnifyLists(a,b,bindings);
+	}
+
+	if (na->type!=nb->type)
+		return false;
+
+	switch (na->type)
+	{
+		case Structure::ST_INT:
+		{
+			return na->i==nb->i;
+		}
+		case Structure::ST_FLOAT:
+		{
+			return na->f==nb->f;
+		}
+		case Structure::ST_BOOL:
+		{
+			return na->b==nb->b;
+		}
+		case Structure::ST_STRING:
+		{
+			return na->name==nb->name;
+		}
+		case Structure::ST_STRUCTURE:
+		{
+			//! an atom is a structure of arity zero, so this covers
+			//! "fred = fred" as well as "f(X,b) = f(a,Y)"
+			if (na->name!=nb->name || na->arity!=nb->arity)
+				return false;
+
+			int index1=a+1;
+			int index2=b+1;
+			for (size_t i=0; i<na->arity; i++)
+			{
+				if (!Unify(index1,index2,bindings))
+					return false;
+				index1+=RawSize(index1);
+				index2+=RawSize(index2);
+			}
+			return true;
+		}
 	}
 	return false;
 };

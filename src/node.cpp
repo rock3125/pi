@@ -180,7 +180,7 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 		{
 			int index=i+1;
 			str=str+Node::ToString(index,nlist);
-			str=str+"==";
+			str=str+"=:=";
 			index+=SizeOfNode(index,nlist);
 			str=str+Node::ToString(index,nlist);
 			break;
@@ -189,7 +189,34 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 		{
 			int index=i+1;
 			str=str+Node::ToString(index,nlist);
-			str=str+"!=";
+			str=str+"=\\=";
+			index+=SizeOfNode(index,nlist);
+			str=str+Node::ToString(index,nlist);
+			break;
+		};
+		case Structure::ST_IDENTICAL:
+		{
+			int index=i+1;
+			str=str+Node::ToString(index,nlist);
+			str=str+"==";
+			index+=SizeOfNode(index,nlist);
+			str=str+Node::ToString(index,nlist);
+			break;
+		};
+		case Structure::ST_NOTIDENTICAL:
+		{
+			int index=i+1;
+			str=str+Node::ToString(index,nlist);
+			str=str+"\\==";
+			index+=SizeOfNode(index,nlist);
+			str=str+Node::ToString(index,nlist);
+			break;
+		};
+		case Structure::ST_NOTUNIFIABLE:
+		{
+			int index=i+1;
+			str=str+Node::ToString(index,nlist);
+			str=str+"\\=";
 			index+=SizeOfNode(index,nlist);
 			str=str+Node::ToString(index,nlist);
 			break;
@@ -207,7 +234,7 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 		{
 			int index=i+1;
 			str=str+Node::ToString(index,nlist);
-			str=str+"<=";
+			str=str+"=<";
 			index+=SizeOfNode(index,nlist);
 			str=str+Node::ToString(index,nlist);
 			break;
@@ -239,6 +266,15 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 			str=str+Node::ToString(index,nlist);
 			break;
 		};
+		case Structure::ST_IS:
+		{
+			int index=i+1;
+			str=str+Node::ToString(index,nlist);
+			str=str+" is ";
+			index+=SizeOfNode(index,nlist);
+			str=str+Node::ToString(index,nlist);
+			break;
+		};
 		case Structure::ST_PLUS:
 		{
 			int index=i+1;
@@ -261,7 +297,7 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 		{
 			int index=i+1;
 			str=str+Node::ToString(index,nlist);
-			str=str+"\\";
+			str=str+"/";
 			index+=SizeOfNode(index,nlist);
 			str=str+Node::ToString(index,nlist);
 			break;
@@ -277,7 +313,7 @@ std::string Node::ToString(int i,std::vector<Node*>& nlist)
 		};
 		case Structure::ST_NOT:
 		{
-			str=str+"not("+Node::ToString(i+1,nlist)+")";
+			str=str+"\\+("+Node::ToString(i+1,nlist)+")";
 			break;
 		}
 		case Structure::ST_CUT:
@@ -459,6 +495,10 @@ std::vector<Node*> Node::StructureToNodeList(Structure* s)
 		case Structure::ST_GREATER:
 		case Structure::ST_GREATERTHAN:
 		case Structure::ST_ASSIGN:
+		case Structure::ST_IS:
+		case Structure::ST_IDENTICAL:
+		case Structure::ST_NOTIDENTICAL:
+		case Structure::ST_NOTUNIFIABLE:
 		case Structure::ST_PLUS:
 		case Structure::ST_TIMES:
 		case Structure::ST_DIVIDE:

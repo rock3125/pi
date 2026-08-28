@@ -141,6 +141,15 @@ public:
 		tLessThan,
 		tEqual,
 		tAssign,
+
+		//! "is" - evaluate and bind.  "=" (tAssign) unifies
+		tIs,
+
+		//! "==" / "\==" - term identity; "\=" - not unifiable.
+		//! tEqual and tNotEqual are the arithmetic pair "=:=" and "=\="
+		tIdentical,
+		tNotIdentical,
+		tNotUnifiable,
 		tComma,
 		tAnd,
 		tOr,
@@ -240,9 +249,24 @@ protected:
 	Structure* ParseCommand(void);
 
 private:
+	//! does the keyword kw sit at the read position, as a whole word?
+	//! "is" must not be found inside "island"
+	bool KeywordAt(const char* kw);
+
 	bool IsVariableBinaryOperator(PrologParserTokens token);
 	bool IsBinaryOperator(PrologParserTokens token);
 	size_t TokenToOperator(PrologParserTokens t);
+
+	//! how tightly a binary operator binds: 1 for * and /, 2 for + and -,
+	//! 3 for the comparisons, "=", "\=" and "is".  0 marks everything that
+	//! is not a binary operator
+	static int OperatorPrecedence(size_t tag);
+
+	//! join lhs and rhs under op, rotating the tree so that the loosest
+	//! operator ends up at the root.  the grammar is right-recursive, so
+	//! "1 + 2 =:= 3" first arrives here as 1 + (2 =:= 3) and has to be
+	//! turned into (1 + 2) =:= 3; a bracketed rhs is left alone
+	Structure* Combine(size_t op,Structure* lhs,Structure* rhs);
 
 private:
 	//! text to parse

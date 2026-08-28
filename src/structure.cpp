@@ -35,6 +35,7 @@ Structure::Structure(void)
 	, constraintExpression(NULL)
 {
 	tag=Structure::ST_STRUCTURE;
+	bracketed=false;
 	name=0;
 	i=0;
 	f=0.0f;
@@ -47,6 +48,7 @@ Structure::Structure(int _i)
 	, constraintExpression(NULL)
 {
 	tag=Structure::ST_INT;
+	bracketed=false;
 	name=0;
 	i=_i;
 	f=0.0f;
@@ -59,6 +61,7 @@ Structure::Structure(float _f)
 	, constraintExpression(NULL)
 {
 	tag=Structure::ST_FLOAT;
+	bracketed=false;
 	name=0;
 	i=0;
 	f=_f;
@@ -71,6 +74,7 @@ Structure::Structure(bool _b)
 	, constraintExpression(NULL)
 {
 	tag=Structure::ST_BOOL;
+	bracketed=false;
 	name=0;
 	i=0;
 	f=0.0f;
@@ -95,6 +99,7 @@ Structure::Structure(std::vector<Structure*> _list)
 	, constraintExpression(NULL)
 {
 	tag=Structure::ST_LIST;
+	bracketed=false;
 	i=0;
 	f=0.0f;
 	b=false;
@@ -128,6 +133,7 @@ void Structure::Clear(void)
 	list.clear();
 
 	tag=Structure::ST_STRUCTURE;
+	bracketed=false;
 	name=0;
 	safe_delete(left);
 	safe_delete(right);
@@ -160,6 +166,7 @@ const Structure& Structure::operator=(const Structure& s)
 
 	name=s.name;
 	tag=s.tag;
+	bracketed=s.bracketed;
 	i=s.i;
 	f=s.f;
 	b=s.b;
@@ -294,6 +301,10 @@ std::string Structure::PrintExpression(Structure* expr)
 		{
 			return PrintExpression(expr->left) + " = " + PrintExpression(expr->right);
 		}
+		case Structure::ST_IS:
+		{
+			return PrintExpression(expr->left) + " is " + PrintExpression(expr->right);
+		}
 		case Structure::ST_PLUS:
 		{
 			return PrintExpression(expr->left) + " + " + PrintExpression(expr->right);
@@ -316,7 +327,7 @@ std::string Structure::PrintExpression(Structure* expr)
 		}
 		case Structure::ST_LESSTHAN:
 		{
-			return PrintExpression(expr->left) + " <= " + PrintExpression(expr->right);
+			return PrintExpression(expr->left) + " =< " + PrintExpression(expr->right);
 		}
 		case Structure::ST_GREATER:
 		{
@@ -328,11 +339,23 @@ std::string Structure::PrintExpression(Structure* expr)
 		}
 		case Structure::ST_EQUAL:
 		{
-			return PrintExpression(expr->left) + " == " + PrintExpression(expr->right);
+			return PrintExpression(expr->left) + " =:= " + PrintExpression(expr->right);
 		}
 		case Structure::ST_NOTEQUAL:
 		{
-			return PrintExpression(expr->left) + " != " + PrintExpression(expr->right);
+			return PrintExpression(expr->left) + " =\\= " + PrintExpression(expr->right);
+		}
+		case Structure::ST_IDENTICAL:
+		{
+			return PrintExpression(expr->left) + " == " + PrintExpression(expr->right);
+		}
+		case Structure::ST_NOTIDENTICAL:
+		{
+			return PrintExpression(expr->left) + " \\== " + PrintExpression(expr->right);
+		}
+		case Structure::ST_NOTUNIFIABLE:
+		{
+			return PrintExpression(expr->left) + " \\= " + PrintExpression(expr->right);
 		}
 		case Structure::ST_CUT:
 		{
@@ -344,7 +367,7 @@ std::string Structure::PrintExpression(Structure* expr)
 		}
 		case Structure::ST_NOT:
 		{
-			return "not(" + PrintExpression(expr->left) + ")";
+			return "\\+(" + PrintExpression(expr->left) + ")";
 		}
 		case Structure::ST_AND:
 		{
