@@ -273,7 +273,7 @@ def markdown_to_html(body, work, npx):
 CSS = """
 /* ---------------------------------------------------------------- tokens
 
-   Shesat's hand, applied to a generated document: the palette, the type and
+   Seshat's hand, applied to a generated document: the palette, the type and
    the pigments of the index at https://home.peter.nz/ - carbon body, red
    ochre for the opening of a thing, Egyptian blue for what is live, orpiment
    for hairlines.  Light is the bare :root so the un-stamped "system" state
@@ -665,8 +665,8 @@ aria-label="Mark for PI: a pi glyph over a red rule.">
   <path d="M30 110 H98" fill="none" stroke="var(--rubric)" stroke-width="5.5" stroke-linecap="round"/>
 </svg>"""
 
-SHESAT_MARK = """<svg class="mark" viewBox="0 0 128 128" role="img" \
-aria-label="The Shesat mark: seven rays beneath a single red arc, on a cord.">
+SESHAT_MARK = """<svg class="mark" viewBox="0 0 128 128" role="img" \
+aria-label="The Seshat mark: seven rays beneath a single red arc, on a cord.">
   <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round">
     <path d="M64 58V36"/><path d="M70.25 61.01L87.46 47.3"/><path d="M71.8 67.78L93.25 72.67"/>
     <path d="M67.47 73.21L77.02 93.03"/><path d="M60.53 73.21L50.98 93.03"/>
@@ -676,7 +676,7 @@ aria-label="The Shesat mark: seven rays beneath a single red arc, on a cord.">
   <path d="M24 34C24-4 104-4 104 34" fill="none" stroke="var(--rubric)" stroke-width="6" stroke-linecap="round"/>
 </svg>"""
 
-#! the favicon is the Shesat mark again, as its own document: an svg favicon
+#! the favicon is the Seshat mark again, as its own document: an svg favicon
 #! inherits no theme, so it carries its own
 FAVICON = (
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E"
@@ -720,7 +720,7 @@ PAGE = """<!doctype html>
 <header class="mast">
   <div class="eyebrow">
     <span>Home lab</span>
-    <span><b>Shesat</b></span>
+    <span><b>Seshat</b></span>
     <span>%(author)s</span>
     <span>Architecture record</span>
   </div>
@@ -738,7 +738,7 @@ PAGE = """<!doctype html>
 </main>
 
 <footer class="colophon">
-  %(shesat_mark)s
+  %(seshat_mark)s
   <div>
     <b>%(copyright)s</b> &middot; generated from <code>docs/c4-model.md</code>.
     Diagrams are pre-rendered to inline SVG, so this page works offline.
@@ -793,7 +793,7 @@ def assemble(body, diagrams):
         "copyright": COPYRIGHT,
         "favicon": FAVICON,
         "pi_mark": PI_MARK,
-        "shesat_mark": SHESAT_MARK,
+        "seshat_mark": SESHAT_MARK,
         "heading": heading.group(0),
         "css": CSS.strip(),
         "body": body.strip(),
