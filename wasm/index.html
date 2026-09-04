@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PI Prolog — WebAssembly REPL</title>
+  <meta name="description" content="The PI Prolog interpreter running locally in your browser with WebAssembly.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">WebAssembly interpreter</p>
+        <h1>PI Prolog</h1>
+      </div>
+      <span id="status" class="status">Loading engine…</span>
+    </header>
+
+    <section class="toolbar" aria-label="REPL controls">
+      <button id="example" type="button" disabled>Load family example</button>
+      <button id="upload" type="button" disabled>Open .pl file</button>
+      <button id="clear" type="button" disabled>Clear database</button>
+      <button id="clear-screen" type="button">Clear screen</button>
+      <input id="file" type="file" accept=".pl,text/plain" hidden>
+    </section>
+
+    <section id="terminal" class="terminal" aria-label="Prolog terminal" aria-live="polite">
+      <div id="output" class="output"></div>
+      <form id="repl" class="prompt-row" autocomplete="off">
+        <label for="command">&gt;</label>
+        <textarea id="command" rows="1" spellcheck="false" aria-label="Prolog command" disabled></textarea>
+        <button type="submit" disabled>Run</button>
+      </form>
+    </section>
+
+    <p class="hint">Enter runs a command · Shift+Enter adds a line · ↑/↓ recalls history</p>
+  </main>
+
+  <script src="pi.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

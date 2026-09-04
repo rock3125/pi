@@ -1,0 +1,5 @@
+# Emscripten build outputs
+/pi.js
+/pi.wasm
+/pi.js.map
+/pi.wasm.map

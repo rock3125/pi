@@ -23,6 +23,20 @@ Requires a C++17 compiler. Sources live in `src/`, intermediate files in
 `build/`, and the finished `prolog` binary in the root of the repository.
 Override the compiler with `make CXX=clang++`.
 
+### Browser / WebAssembly
+
+The same C++ engine can run entirely in a browser, with an included REPL and
+local `.pl` file picker. With the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
+active:
+
+```sh
+make wasm
+cd wasm && make serve
+```
+
+Then open <http://localhost:8080>. See [wasm/README.md](wasm/README.md) for the
+JavaScript API and deployment details.
+
 ```
 src/        the interpreter
 samples/    example prolog programs

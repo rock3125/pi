@@ -3,6 +3,7 @@
 #   make            build the optimised interpreter into ./prolog
 #   make debug      build with symbols, no optimisation and tracing enabled
 #   make test       build and run the regression tests
+#   make wasm       build the browser interpreter (requires Emscripten)
 #   make docs       rebuild docs/c4-model.html from the markdown
 #   make pdf        print docs/c4-model.pdf from that html
 #   make clean      remove all build output
@@ -43,12 +44,15 @@ SOURCES  := binding.cpp \
 OBJECTS  := $(addprefix $(BUILDDIR)/,$(SOURCES:.cpp=.o))
 DEPS     := $(OBJECTS:.o=.d)
 
-.PHONY: all debug test docs pdf clean
+.PHONY: all debug test wasm docs pdf clean
 
 all: $(TARGET)
 
 test: $(TARGET)
 	@./tests/run_tests.sh
+
+wasm:
+	$(MAKE) -C wasm
 
 # The only target that needs more than a C++ compiler: node/npx for marked
 # and mermaid-cli, and a chrome build for mermaid-cli to render with.  The
@@ -89,5 +93,6 @@ $(BUILDDIR):
 
 clean:
 	rm -rf $(BUILDDIR) $(TARGET)
+	$(MAKE) -C wasm clean
 
 -include $(DEPS)
